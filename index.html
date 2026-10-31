@@ -27,7 +27,11 @@ table{width:100%;border-collapse:collapse;font-size:15px}td,th{padding:6px 4px;b
 .doc{background:#fff;padding:16px;border:2px solid #C62828;border-radius:10px}.doc .hd{background:#C62828;color:#fff;margin:-16px -16px 12px;padding:12px 16px;border-radius:7px 7px 0 0}
 .total{font-size:22px;font-weight:700;text-align:right;margin-top:8px}
 @media print{header,nav,.noprint{display:none!important}body{background:#fff;padding:0}main{padding:0}.card{box-shadow:none}}
+html:not(.inapp) header{padding-top:calc(14px + env(safe-area-inset-top));padding-left:calc(16px + env(safe-area-inset-left));padding-right:calc(16px + env(safe-area-inset-right))}
+html:not(.inapp) body{padding-bottom:calc(84px + env(safe-area-inset-bottom))}
+html.inapp nav{padding-bottom:0}
 </style></head><body>
+<script>if(window.Android)document.documentElement.classList.add("inapp")</script>
 <header><h1 id="gname">Rehman Motors</h1><small>Devipur ka bharosa</small></header>
 <main id="app"></main>
 <nav id="nav"></nav>
@@ -125,7 +129,7 @@ ${kind==="bill"&&s.upi?`<p class="muted">UPI se pay karein: <b>${esc(s.upi)}</b>
 ${j.pay==="Udhaar"&&!j.paid?`<button class="btn g" onclick="markPaid('${j.id}')">💰 Udhaar ka paisa mil gaya</button>`:""}
 ${wl?`<a class="btn g" id="waBill" href="${wl}" target="_blank" rel="noopener">📲 WhatsApp pe bill bhejo</a><div class="muted">WhatsApp khulega, message bhara hoga. Wahan bas Send dabana hai.</div>`:`<div class="warn">WhatsApp ke liye customer ka sahi 10 digit phone number chahiye.</div>`}
 ${ul?`<a class="btn w" href="${ul}">💳 UPI se paisa lo (phone ka UPI app khulega)</a>`:""}
-<button class="btn w" onclick="print()">🖨️ Print / PDF save karo</button><div class="muted">PDF ke liye print screen mein "Save as PDF" chuno. Photo chahiye to screenshot le lo.</div>
+<button class="btn w" onclick="doPrint()">🖨️ Print / PDF save karo</button><div class="muted">PDF ke liye print screen mein "Save as PDF" chuno. Photo chahiye to screenshot le lo.</div>
 <button class="btn w" onclick="go('job','${j.id}')">✏️ Edit karo</button></div>`}
 function setStatus(id,s){const j=D.jobs.find(x=>x.id===id);j.status=s;setDelivered(j);save();render()}
 function markPaid(id){const j=D.jobs.find(x=>x.id===id);j.paid=true;save();render()}
@@ -177,7 +181,9 @@ return `<div class="warn">⚠️ Saara data sirf isi phone mein save hai. Phone 
 <div class="card"><button class="btn w" onclick="if(confirm('Saara data mit jayega. Pehle backup liya?')&&confirm('Pakka?')){D=blank();save();go('home')}">🗑️ Saara data mitao</button></div>`}
 function saveSet(){const s=D.settings;s.name=$("#s_name").value.trim()||"Rehman Motors";s.tagline=$("#s_tag").value.trim();s.phone=$("#s_phone").value.trim();s.address=$("#s_addr").value.trim();s.upi=$("#s_upi").value.trim();s.remDays=num($("#s_rem").value)||60;
 s.mechanics=$("#s_mech").value.split(",").map(x=>x.trim()).filter(Boolean);if(!s.mechanics.length)s.mechanics=["Mama"];JOBS.forEach((j,i)=>s.rates[j]=num($("#sr"+i).value));save();alert("Save ho gaya ✔");render()}
-function dl(name,text,type){const a=document.createElement("a");a.href=URL.createObjectURL(new Blob([text],{type}));a.download=name;document.body.appendChild(a);a.click();a.remove()}
+function doPrint(){if(window.Android&&Android.print)Android.print();else print()}
+function appBack(){if(view!=="home"){go("home");return true}return false}
+function dl(name,text,type){if(window.Android&&Android.saveFile){Android.saveFile(name,type,text);return}const a=document.createElement("a");a.href=URL.createObjectURL(new Blob([text],{type}));a.download=name;document.body.appendChild(a);a.click();a.remove()}
 function backup(){dl(`rehman-motors-backup-${today()}.json`,JSON.stringify(D,null,1),"application/json");D.lastBackup=today();save()}
 function csv(){const q=v=>`"${String(v??"").replace(/"/g,'""')}"`;const h=["Job No","Date","Naam","Phone","Gaon","Bike","Number","KM","Kaam","Parts","Labour","Parts Sale","Parts Cost","Total","Payment","Udhaar Baaki","Status","Mechanic","Delivered","Agli Service"];
 const r=D.jobs.map(j=>{const t=tot(j);return[j.no,j.date,j.cust.name,j.cust.phone,j.cust.gaon,j.bike.model,j.bike.number,j.bike.km,j.works.map(w=>w.name).join("; "),j.parts.map(p=>p.name+" x"+p.qty).join("; "),t.lab,t.ps,t.pc,t.total,j.pay,j.pay==="Udhaar"&&!j.paid?"Haan":"",j.status,j.mech,j.deliveredOn||"",j.nextService||""]});
