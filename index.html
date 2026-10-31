@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="hi"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#C62828"><title>Rehman Motors</title>
+<link rel="manifest" href="manifest.webmanifest"><link rel="icon" href="icon.svg">
+<style>
+*{box-sizing:border-box}body{margin:0;font-family:system-ui,-apple-system,Roboto,sans-serif;background:#f6f6f6;color:#222;font-size:17px;padding-bottom:84px}
+header{background:#C62828;color:#fff;padding:14px 16px;position:sticky;top:0;z-index:5}header h1{margin:0;font-size:21px}header small{opacity:.9}
+main{padding:12px;max-width:640px;margin:auto}
+.card{background:#fff;border-radius:14px;padding:14px;margin-bottom:12px;box-shadow:0 1px 3px #0001}
+h2{font-size:19px;margin:4px 0 10px}h3{font-size:16px;margin:10px 0 6px;color:#C62828}
+label{display:block;font-size:14px;color:#555;margin:8px 0 3px}
+input,select,textarea{width:100%;font-size:17px;padding:11px;border:1px solid #ccc;border-radius:10px;background:#fff}
+textarea{min-height:60px}
+.btn{display:block;width:100%;padding:14px;font-size:17px;font-weight:600;border:0;border-radius:12px;background:#C62828;color:#fff;margin-top:10px;text-align:center;text-decoration:none;cursor:pointer}
+.btn.w{background:#fff;color:#C62828;border:2px solid #C62828}.btn.g{background:#1f9d55}.btn.s{display:inline-block;width:auto;padding:8px 12px;font-size:15px;margin:4px 4px 0 0}
+.row{display:flex;gap:8px}.row>*{flex:1}
+.stats{display:grid;grid-template-columns:1fr 1fr;gap:10px}.stat{background:#fff;border-radius:14px;padding:12px;box-shadow:0 1px 3px #0001}.stat b{display:block;font-size:24px;color:#C62828}.stat span{font-size:14px;color:#555}
+.chk{display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid #eee}.chk input{width:24px;height:24px}.chk span{flex:1}.chk .r{width:90px}
+.item{padding:10px 0;border-bottom:1px solid #eee}.item:last-child{border:0}.muted{color:#777;font-size:14px}
+.pill{display:inline-block;padding:2px 9px;border-radius:20px;font-size:13px;background:#eee}.pill.Ready{background:#fff3cd}.pill.Delivered{background:#d4edda}.pill.chalu{background:#d6e9ff}
+.warn{background:#fff3cd;border-radius:12px;padding:10px;font-size:14px;margin-bottom:12px}
+nav{position:fixed;bottom:0;left:0;right:0;display:flex;background:#fff;border-top:1px solid #ddd;z-index:9;padding-bottom:env(safe-area-inset-bottom)}
+nav button{flex:1;border:0;background:none;padding:9px 2px;font-size:12px;color:#555}nav button i{display:block;font-style:normal;font-size:22px}nav button.on{color:#C62828;font-weight:700}
+table{width:100%;border-collapse:collapse;font-size:15px}td,th{padding:6px 4px;border-bottom:1px solid #eee;text-align:left}td.n,th.n{text-align:right}
+.bars{display:flex;align-items:flex-end;gap:3px;height:140px;border-bottom:1px solid #ccc;overflow-x:auto}.bars div{flex:1;min-width:14px;background:#C62828;border-radius:4px 4px 0 0;position:relative}
+.doc{background:#fff;padding:16px;border:2px solid #C62828;border-radius:10px}.doc .hd{background:#C62828;color:#fff;margin:-16px -16px 12px;padding:12px 16px;border-radius:7px 7px 0 0}
+.total{font-size:22px;font-weight:700;text-align:right;margin-top:8px}
+@media print{header,nav,.noprint{display:none!important}body{background:#fff;padding:0}main{padding:0}.card{box-shadow:none}}
+</style></head><body>
+<header><h1 id="gname">Rehman Motors</h1><small>Devipur ka bharosa</small></header>
+<main id="app"></main>
+<nav id="nav"></nav>
+<script>
+const JOBS=["General Service","Engine Oil Change (labour)","Puncture – Tube","Puncture – Tubeless","Brake Shoe / Pad Fitting","Chain-Sprocket Fitting","Clutch Plate Badalna","Carburetor Cleaning","Spark Plug Badalna","Battery Check / Charging","Bike Wash","Wash + Polish"];
+const KEY="rehmanMotorsData_v1";
+function blank(){return{settings:{name:"Rehman Motors",tagline:"Devipur ka bharosa",phone:"",address:"",upi:"",remDays:60,mechanics:["Mama","Staff 1","Staff 2"],rates:Object.fromEntries(JOBS.map(j=>[j,0]))},jobs:[],exp:[],seq:0}}
+let D;try{D=JSON.parse(localStorage.getItem(KEY))||blank()}catch(e){D=blank()}
+const save=()=>localStorage.setItem(KEY,JSON.stringify(D));
+const $=s=>document.querySelector(s);
+const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const today=()=>{const d=new Date();return new Date(d.getTime()-d.getTimezoneOffset()*6e4).toISOString().slice(0,10)};
+const addDays=(s,n)=>{const d=new Date(s+"T00:00:00");d.setDate(d.getDate()+Number(n));return new Date(d.getTime()-d.getTimezoneOffset()*6e4).toISOString().slice(0,10)};
+const fd=s=>s?s.split("-").reverse().join("-"):"";
+const rs=n=>"₹"+Math.round(Number(n)||0).toLocaleString("en-IN");
+const num=v=>Number(v)||0;
+function tot(j){const lab=j.works.reduce((a,w)=>a+num(w.rate),0)+num(j.labourExtra);const ps=j.parts.reduce((a,p)=>a+num(p.qty)*num(p.price),0);const pc=j.parts.reduce((a,p)=>a+num(p.qty)*num(p.cost),0);return{lab,ps,pc,total:lab+ps}}
+function waNum(p){let d=String(p||"").replace(/\D/g,"");if(d.length>10)d=d.slice(-10);return d.length===10?"91"+d:""}
+function waLink(p,msg){const n=waNum(p);return n?`https://wa.me/${n}?text=${encodeURIComponent(msg)}`:""}
+let view="home",editId=null,curJob=null,plMode="today",plFrom=today(),plTo=today();
+const TABS=[["home","🏠","Home"],["job","➕","Naya Job"],["rem","🔔","Reminders"],["hisaab","📊","Hisaab"],["set","⚙️","Settings"]];
+function go(v,arg){view=v;if(v==="job"&&arg===undefined)editId=null;if(arg!==undefined){if(v==="job")editId=arg;else curJob=arg}render();scrollTo(0,0)}
+function render(){$("#gname").textContent=D.settings.name||"Rehman Motors";
+$("#nav").innerHTML=TABS.map(t=>`<button class="${view===t[0]||(t[0]==="hisaab"&&view==="kharcha")?"on":""}" onclick="go('${t[0]}')"><i>${t[1]}</i>${t[2]}</button>`).join("");
+$("#app").innerHTML=({home,job:jobForm,rem,hisaab,set,card:()=>doc("card"),bill:()=>doc("bill"),kharcha,history:hist})[view]();
+if(view==="job")initForm()}
+/* HOME */
+function home(){const t=today();const tj=D.jobs.filter(j=>j.date===t);const pend=D.jobs.filter(j=>j.status!=="Delivered");const due=dueList().length;
+return `<div class="stats"><div class="stat"><b>${tj.length}</b><span>Aaj ki bikes</span></div><div class="stat"><b>${rs(tj.reduce((a,j)=>a+tot(j).total,0))}</b><span>Aaj ki kamai</span></div><div class="stat"><b>${pend.length}</b><span>Pending kaam</span></div><div class="stat"><b>${due}</b><span>Reminder bhejne hain</span></div></div>
+<button class="btn" onclick="go('job')">➕ Naya Job banao</button>
+<div class="row"><button class="btn w" onclick="go('history')">🔍 Customer dhundo</button><button class="btn w" onclick="go('kharcha')">💸 Kharcha likho</button></div>
+<div class="card" style="margin-top:12px"><h2>Pending kaam</h2>${pend.length?pend.slice().reverse().map(jobRow).join(""):'<div class="muted">Koi pending kaam nahi.</div>'}</div>
+${D.jobs.length?"":`<div class="card"><div class="muted">Abhi koi data nahi hai. App try karna ho to demo data daal sakte ho (baad mein Settings se sab mita sakte ho).</div><button class="btn w" onclick="demo()">Demo data daalo</button></div>`}`}
+function jobRow(j){return `<div class="item" onclick="go('card','${j.id}')"><b>${esc(j.no)}</b> · ${esc(j.cust.name)} <span class="pill ${j.status==="Kaam chalu"?"chalu":j.status}">${esc(j.status)}</span><div class="muted">${esc(j.bike.model)} ${esc(j.bike.number)} · ${fd(j.date)} · ${rs(tot(j).total)}${j.pay==="Udhaar"?" · Udhaar":""}</div></div>`}
+/* JOB FORM */
+function jobForm(){const j=editId?D.jobs.find(x=>x.id===editId):null;const s=D.settings;
+return `<div class="card"><h2>${j?"Job edit karo: "+esc(j.no):"Naya Job"}</h2>
+<h3>Customer</h3><label>Phone</label><input id="f_phone" type="tel" inputmode="numeric" placeholder="10 digit number">
+<div id="f_hint" class="muted"></div>
+<label>Naam</label><input id="f_name"><label>Gaon / Area</label><input id="f_gaon">
+<h3>Bike</h3><div class="row"><div><label>Bike model</label><input id="f_model" placeholder="Splendor, Shine..."></div><div><label>Bike number</label><input id="f_number" placeholder="JH.."></div></div>
+<label>KM reading</label><input id="f_km" type="number" inputmode="numeric"><label>Customer ki shikayat</label><textarea id="f_comp"></textarea>
+<h3>Kaam (tick karo, rate badal sakte ho)</h3><div id="f_works">${JOBS.map((w,i)=>`<div class="chk"><input type="checkbox" id="w${i}"><span>${w}</span><input class="r" id="wr${i}" type="number" inputmode="numeric" value="${num(s.rates[w])}"></div>`).join("")}</div>
+<div id="f_custom"></div><button class="btn s w" onclick="addCustom()">+ Aur kaam likho</button>
+<h3>Parts</h3><div class="muted">Naam, kitne, bechne ka rate, aur (optional) aapka kharid rate</div><div id="f_parts"></div><button class="btn s w" onclick="addPart()">+ Part jodo</button>
+<label>Extra labour ₹</label><input id="f_lab" type="number" inputmode="numeric" value="0">
+<div class="row"><div><label>Mechanic</label><select id="f_mech">${s.mechanics.map(m=>`<option>${esc(m)}</option>`).join("")}</select></div>
+<div><label>Status</label><select id="f_status">${["Aaya","Kaam chalu","Ready","Delivered"].map(x=>`<option>${x}</option>`).join("")}</select></div></div>
+<label>Payment</label><select id="f_pay"><option>Cash</option><option>UPI</option><option>Udhaar</option></select>
+<div class="total" id="f_total"></div>
+<button class="btn" onclick="saveJob()">✅ Save karo aur Job Card dekho</button>${j?`<button class="btn w" onclick="delJob('${j.id}')">🗑️ Ye job mitao</button>`:""}</div>`}
+function addCustom(n="",r=""){const d=document.createElement("div");d.className="row cw";d.innerHTML=`<input placeholder="Kaam ka naam" value="${esc(n)}"><input type="number" inputmode="numeric" placeholder="₹" value="${esc(r)}" style="max-width:100px">`;$("#f_custom").appendChild(d);d.oninput=calc}
+function addPart(p={}){const d=document.createElement("div");d.className="row pr";d.style.marginTop="6px";d.innerHTML=`<input placeholder="Part" value="${esc(p.name||"")}"><input type="number" inputmode="numeric" placeholder="Qty" value="${esc(p.qty??1)}" style="max-width:60px"><input type="number" inputmode="numeric" placeholder="Rate ₹" value="${esc(p.price||"")}" style="max-width:85px"><input type="number" inputmode="numeric" placeholder="Kharid ₹" value="${esc(p.cost||"")}" style="max-width:85px">`;$("#f_parts").appendChild(d);d.oninput=calc}
+function readForm(){const works=[];JOBS.forEach((w,i)=>{if($("#w"+i).checked)works.push({name:w,rate:num($("#wr"+i).value)})});
+document.querySelectorAll(".cw").forEach(r=>{const [a,b]=r.querySelectorAll("input");if(a.value.trim())works.push({name:a.value.trim(),rate:num(b.value)})});
+const parts=[];document.querySelectorAll(".pr").forEach(r=>{const x=r.querySelectorAll("input");if(x[0].value.trim())parts.push({name:x[0].value.trim(),qty:num(x[1].value)||1,price:num(x[2].value),cost:num(x[3].value)})});
+return{cust:{name:$("#f_name").value.trim(),phone:$("#f_phone").value.trim(),gaon:$("#f_gaon").value.trim()},bike:{model:$("#f_model").value.trim(),number:$("#f_number").value.trim().toUpperCase(),km:$("#f_km").value},complaint:$("#f_comp").value.trim(),works,parts,labourExtra:num($("#f_lab").value),mech:$("#f_mech").value,status:$("#f_status").value,pay:$("#f_pay").value}}
+function calc(){if(!document.getElementById('f_name'))return;const f=readForm();$("#f_total").textContent="Total: "+rs(tot(f).total)}
+function initForm(){const j=editId?D.jobs.find(x=>x.id===editId):null;
+if(j){$("#f_phone").value=j.cust.phone;$("#f_name").value=j.cust.name;$("#f_gaon").value=j.cust.gaon;$("#f_model").value=j.bike.model;$("#f_number").value=j.bike.number;$("#f_km").value=j.bike.km;$("#f_comp").value=j.complaint;
+j.works.forEach(w=>{const i=JOBS.indexOf(w.name);if(i>=0){$("#w"+i).checked=true;$("#wr"+i).value=w.rate}else addCustom(w.name,w.rate)});j.parts.forEach(addPart);$("#f_lab").value=j.labourExtra;$("#f_mech").value=j.mech;$("#f_status").value=j.status;$("#f_pay").value=j.pay}
+else addPart();
+$("#app").addEventListener("input",calc);$("#app").addEventListener("change",calc);
+const af=()=>{if(j)return;const ph=$("#f_phone").value.replace(/\D/g,""),bn=$("#f_number").value.trim().toUpperCase();
+const p=D.jobs.slice().reverse().find(x=>(ph.length>=10&&x.cust.phone.replace(/\D/g,"").slice(-10)===ph.slice(-10))||(bn.length>=4&&x.bike.number===bn));
+if(p){["name","gaon"].forEach(k=>{if(!$("#f_"+k).value)$("#f_"+k).value=p.cust[k]});if(!$("#f_phone").value)$("#f_phone").value=p.cust.phone;if(!$("#f_model").value)$("#f_model").value=p.bike.model;if(!$("#f_number").value)$("#f_number").value=p.bike.number;
+const n=D.jobs.filter(x=>x.cust.phone===p.cust.phone).length;$("#f_hint").textContent=`✔ Purana customer: ${p.cust.name}, pehle ${n} baar aaye. Details bhar di.`}};
+$("#f_phone").addEventListener("blur",af);$("#f_number").addEventListener("blur",af);$("#f_phone").addEventListener("input",()=>{if($("#f_phone").value.replace(/\D/g,"").length===10)af()});calc()}
+function setDelivered(j){if(j.status==="Delivered"&&!j.deliveredOn){j.deliveredOn=today();j.nextService=addDays(j.deliveredOn,D.settings.remDays);j.remSent=false}if(j.status!=="Delivered"){j.deliveredOn=null;j.nextService=null}}
+function saveJob(){const f=readForm();if(!f.cust.name&&!f.cust.phone){alert("Customer ka naam ya phone likho");return}
+let j;if(editId){j=D.jobs.find(x=>x.id===editId);Object.assign(j,f)}else{D.seq++;j={id:"j"+Date.now(),no:"RM-"+String(D.seq).padStart(4,"0"),date:today(),...f,deliveredOn:null,nextService:null,remSent:false,paid:f.pay!=="Udhaar"};D.jobs.push(j)}
+if(f.pay!=="Udhaar")j.paid=true;else if(editId)j.paid=false;setDelivered(j);save();go("card",j.id)}
+function delJob(id){if(confirm("Pakka mitana hai?")){D.jobs=D.jobs.filter(j=>j.id!==id);save();go("home")}}
+/* JOB CARD / BILL */
+function billMsg(j){const t=tot(j),s=D.settings;let m=`*${s.name}*\n${s.tagline}\n\nBill: ${j.no}  |  Date: ${fd(j.date)}\nNamaste ${j.cust.name} ji,\nBike: ${j.bike.model} ${j.bike.number}\n\n*Kaam:*\n`;
+j.works.forEach(w=>m+=`- ${w.name}: ${rs(w.rate)}\n`);if(num(j.labourExtra))m+=`- Extra labour: ${rs(j.labourExtra)}\n`;
+if(j.parts.length){m+=`\n*Parts:*\n`;j.parts.forEach(p=>m+=`- ${p.name} x${p.qty}: ${rs(p.qty*p.price)}\n`)}
+m+=`\n*Total: ${rs(t.total)}*\nPayment: ${j.pay}\n`;if(s.upi&&j.pay!=="Cash")m+=`UPI: ${s.upi}\n`;
+if(j.nextService)m+=`Agli service: ${fd(j.nextService)}\n`;m+=`\nDhanyavaad! Aapki bike, hamari zimmedari.\n${s.name}${s.phone?" | "+s.phone:""}`;return m}
+function upiLink(j){const s=D.settings;return s.upi?`upi://pay?pa=${encodeURIComponent(s.upi)}&pn=${encodeURIComponent(s.name)}&am=${tot(j).total}&cu=INR&tn=${encodeURIComponent(j.no)}`:""}
+function doc(kind){const j=D.jobs.find(x=>x.id===curJob);if(!j)return home();const t=tot(j),s=D.settings;
+const rows=j.works.map(w=>`<tr><td>${esc(w.name)}</td><td class="n">${rs(w.rate)}</td></tr>`).join("")+(num(j.labourExtra)?`<tr><td>Extra labour</td><td class="n">${rs(j.labourExtra)}</td></tr>`:"")+j.parts.map(p=>`<tr><td>${esc(p.name)} x${p.qty}</td><td class="n">${rs(p.qty*p.price)}</td></tr>`).join("");
+const wl=waLink(j.cust.phone,billMsg(j)),ul=upiLink(j);
+return `<div class="noprint row" style="margin-bottom:10px"><button class="btn s ${kind==="card"?"":"w"}" onclick="go('card','${j.id}')">📋 Job Card</button><button class="btn s ${kind==="bill"?"":"w"}" onclick="go('bill','${j.id}')">🧾 Bill</button></div>
+<div class="doc"><div class="hd"><b style="font-size:20px">${esc(s.name)}</b><br><small>${esc(s.tagline)}${s.phone?" · "+esc(s.phone):""}${s.address?"<br>"+esc(s.address):""}</small></div>
+<div class="row"><div><b>${kind==="card"?"JOB CARD":"BILL"}: ${esc(j.no)}</b></div><div style="text-align:right">${fd(j.date)}</div></div>
+<p>${esc(j.cust.name)} · ${esc(j.cust.phone)}${j.cust.gaon?" · "+esc(j.cust.gaon):""}<br>Bike: <b>${esc(j.bike.model)} ${esc(j.bike.number)}</b>${j.bike.km?" · "+esc(j.bike.km)+" km":""}</p>
+${kind==="card"?`<p><b>Shikayat:</b> ${esc(j.complaint)||"-"}<br><b>Mechanic:</b> ${esc(j.mech)} · <b>Status:</b> ${esc(j.status)}</p>`:""}
+<table><tr><th>Kaam / Part</th><th class="n">₹</th></tr>${rows}</table>
+<div class="total">Total: ${rs(t.total)}</div><div class="muted" style="text-align:right">Payment: ${esc(j.pay)}${j.pay==="Udhaar"?(j.paid?" (mil gaya)":" (baaki)"):""}</div>
+${j.nextService?`<p>Agli service: <b>${fd(j.nextService)}</b></p>`:""}
+${kind==="bill"&&s.upi?`<p class="muted">UPI se pay karein: <b>${esc(s.upi)}</b></p>`:""}
+<p class="muted">Parts ka rate alag, purana part customer ko dikhaya jayega. Dhanyavaad!</p></div>
+<div class="noprint"><h3>Status badlo</h3><div>${["Aaya","Kaam chalu","Ready","Delivered"].map(x=>`<button class="btn s ${j.status===x?"":"w"}" onclick="setStatus('${j.id}','${x}')">${x}</button>`).join("")}</div>
+${j.pay==="Udhaar"&&!j.paid?`<button class="btn g" onclick="markPaid('${j.id}')">💰 Udhaar ka paisa mil gaya</button>`:""}
+${wl?`<a class="btn g" id="waBill" href="${wl}" target="_blank" rel="noopener">📲 WhatsApp pe bill bhejo</a><div class="muted">WhatsApp khulega, message bhara hoga. Wahan bas Send dabana hai.</div>`:`<div class="warn">WhatsApp ke liye customer ka sahi 10 digit phone number chahiye.</div>`}
+${ul?`<a class="btn w" href="${ul}">💳 UPI se paisa lo (phone ka UPI app khulega)</a>`:""}
+<button class="btn w" onclick="print()">🖨️ Print / PDF save karo</button><div class="muted">PDF ke liye print screen mein "Save as PDF" chuno. Photo chahiye to screenshot le lo.</div>
+<button class="btn w" onclick="go('job','${j.id}')">✏️ Edit karo</button></div>`}
+function setStatus(id,s){const j=D.jobs.find(x=>x.id===id);j.status=s;setDelivered(j);save();render()}
+function markPaid(id){const j=D.jobs.find(x=>x.id===id);j.paid=true;save();render()}
+/* REMINDERS */
+function dueList(){const lim=addDays(today(),7);const latest={};D.jobs.forEach(j=>{const k=j.bike.number||j.cust.phone;if(!latest[k]||j.date>=latest[k].date)latest[k]=j});
+return Object.values(latest).filter(j=>j.nextService&&j.nextService<=lim&&!j.remSent).sort((a,b)=>a.nextService<b.nextService?-1:1)}
+function remMsg(j){const s=D.settings;return `Namaste ${j.cust.name} ji,\nAapki bike ${j.bike.model} ${j.bike.number} ki service ${fd(j.nextService)} ko due hai.\n${s.name} mein aaiye, time par service se bike lambi chalti hai.\n${s.tagline}${s.phone?"\nPhone: "+s.phone:""}`}
+function rem(){const l=dueList(),t=today();
+return `<div class="card"><h2>🔔 Service Reminders</h2><div class="muted">Agle 7 din mein due aur jinki date nikal gayi. Button dabao, WhatsApp khulega, Send dabao.</div>
+${l.length?l.map(j=>{const wl=waLink(j.cust.phone,remMsg(j));return `<div class="item"><b>${esc(j.cust.name)}</b> · ${esc(j.bike.model)} ${esc(j.bike.number)}<div class="muted">Due: ${fd(j.nextService)} ${j.nextService<t?'<b style="color:#C62828">(Late)</b>':""}</div>${wl?`<a class="btn g s rem" href="${wl}" target="_blank" rel="noopener" onclick="remSent('${j.id}')">📲 Reminder bhejo</a>`:'<span class="muted">Phone number sahi nahi</span>'}<button class="btn w s" onclick="remSent('${j.id}')">✔ Bhej diya</button></div>`}).join(""):'<p class="muted">Abhi koi reminder due nahi hai.</p>'}</div>`}
+function remSent(id){const j=D.jobs.find(x=>x.id===id);j.remSent=true;save();setTimeout(render,300)}
+/* HISTORY */
+let hq="";function hist(){const q=hq.replace(/\s/g,"").toUpperCase();const r=q.length>=3?D.jobs.filter(j=>j.cust.phone.replace(/\D/g,"").includes(q)||j.bike.number.replace(/\s/g,"").includes(q)||j.cust.name.toUpperCase().includes(q)).reverse():[];
+return `<div class="card"><h2>🔍 Customer History</h2><input id="hq" placeholder="Phone, bike number ya naam" value="${esc(hq)}" oninput="hq=this.value;render();const e=document.getElementById('hq');e.focus();e.setSelectionRange(e.value.length,e.value.length)">
+${q.length>=3?(r.length?r.map(jobRow).join(""):'<p class="muted">Kuch nahi mila.</p>'):'<p class="muted">Kam se kam 3 akshar likho.</p>'}</div>`}
+/* KHARCHA */
+function kharcha(){const l=D.exp.slice().reverse().slice(0,30);
+return `<div class="card"><h2>💸 Kharcha likho</h2><label>Date</label><input id="e_date" type="date" value="${today()}"><label>Kis cheez ka</label><select id="e_cat">${["Rent","Bijli","Salary","Parts kharid","Other"].map(x=>`<option>${x}</option>`).join("")}</select>
+<label>Kitna ₹</label><input id="e_amt" type="number" inputmode="numeric"><label>Note</label><input id="e_note"><button class="btn" onclick="addExp()">Save karo</button></div>
+<div class="card"><h2>Pichhle kharche</h2>${l.length?l.map(e=>`<div class="item">${fd(e.date)} · <b>${esc(e.cat)}</b> · ${rs(e.amt)} <span class="muted">${esc(e.note)}</span> <button class="btn s w" onclick="delExp('${e.id}')">Mitao</button></div>`).join(""):'<p class="muted">Abhi koi kharcha nahi likha.</p>'}</div>`}
+function addExp(){const a=num($("#e_amt").value);if(!a){alert("Amount likho");return}D.exp.push({id:"e"+Date.now(),date:$("#e_date").value||today(),cat:$("#e_cat").value,amt:a,note:$("#e_note").value.trim()});save();render()}
+function delExp(id){D.exp=D.exp.filter(e=>e.id!==id);save();render()}
+/* HISAAB / P&L */
+function range(){const t=today();if(plMode==="today")return[t,t];if(plMode==="month")return[t.slice(0,8)+"01",t];return[plFrom,plTo]}
+function pl(a,b){const js=D.jobs.filter(j=>j.date>=a&&j.date<=b),es=D.exp.filter(e=>e.date>=a&&e.date<=b);let lab=0,ps=0,pc=0;js.forEach(j=>{const t=tot(j);lab+=t.lab;ps+=t.ps;pc+=t.pc});const kh=es.reduce((s,e)=>s+num(e.amt),0);return{js,lab,ps,pc,kh,kamai:lab+ps,munafa:lab+ps-pc-kh}}
+function hisaab(){const[a,b]=range(),r=pl(a,b);const ud=D.jobs.filter(j=>j.pay==="Udhaar"&&!j.paid);
+const days={};let d=a,c=0;while(d<=b&&c<62){days[d]=0;d=addDays(d,1);c++}r.js.forEach(j=>{if(j.date in days)days[j.date]+=tot(j).total});const mx=Math.max(1,...Object.values(days));
+return `<div class="row noprint">${[["today","Aaj"],["month","Is mahine"],["custom","Date chuno"]].map(m=>`<button class="btn s ${plMode===m[0]?"":"w"}" onclick="plMode='${m[0]}';render()">${m[1]}</button>`).join("")}</div>
+${plMode==="custom"?`<div class="row"><div><label>Se</label><input type="date" value="${plFrom}" onchange="plFrom=this.value;render()"></div><div><label>Tak</label><input type="date" value="${plTo}" onchange="plTo=this.value;render()"></div></div>`:""}
+<div class="card" style="margin-top:10px"><h2>Hisaab: ${fd(a)}${a!==b?" se "+fd(b):""}</h2><table id="pl">
+<tr><td>Bikes</td><td class="n">${r.js.length}</td></tr><tr><td>Labour kamai</td><td class="n">${rs(r.lab)}</td></tr><tr><td>Parts bikri</td><td class="n">${rs(r.ps)}</td></tr>
+<tr><td><b>Kul kamai</b></td><td class="n"><b>${rs(r.kamai)}</b></td></tr><tr><td>Parts ki kharid (jo likhi)</td><td class="n">− ${rs(r.pc)}</td></tr><tr><td>Kharcha</td><td class="n">− ${rs(r.kh)}</td></tr>
+<tr><td><b>Munafa</b></td><td class="n"><b style="color:${r.munafa<0?"#C62828":"#1f9d55"}">${rs(r.munafa)}</b></td></tr></table>
+<div class="muted">Kul kamai mein Udhaar wale bill bhi gine gaye hain.</div></div>
+${Object.keys(days).length>1?`<div class="card"><h2>Roz ki kamai</h2><div class="bars">${Object.entries(days).map(([k,v])=>`<div title="${fd(k)}: ${rs(v)}" style="height:${Math.max(2,v/mx*100)}%"></div>`).join("")}</div><div class="muted row"><span>${fd(a)}</span><span style="text-align:right">${fd(b)}</span></div></div>`:""}
+<div class="card"><h2>Udhaar baaki (${ud.length})</h2>${ud.length?ud.map(j=>`<div class="item" onclick="go('card','${j.id}')"><b>${esc(j.cust.name)}</b> · ${rs(tot(j).total)}<div class="muted">${esc(j.no)} · ${fd(j.date)} · ${esc(j.cust.phone)}</div></div>`).join("")+`<p><b>Kul udhaar: ${rs(ud.reduce((s,j)=>s+tot(j).total,0))}</b></p>`:'<p class="muted">Koi udhaar baaki nahi.</p>'}</div>
+<button class="btn w" onclick="go('kharcha')">💸 Kharcha likho</button>`}
+/* SETTINGS */
+function set(){const s=D.settings;
+return `<div class="warn">⚠️ Saara data sirf isi phone mein save hai. Phone kho gaya ya browser data clear hua to data chala jayega. Har hafte Backup zaroor lo.</div>
+<div class="card"><h2>Garage ki details</h2><label>Garage ka naam</label><input id="s_name" value="${esc(s.name)}"><label>Tagline</label><input id="s_tag" value="${esc(s.tagline)}">
+<label>Phone</label><input id="s_phone" type="tel" value="${esc(s.phone)}"><label>Pata</label><input id="s_addr" value="${esc(s.address)}"><label>UPI ID (jaise naam@okaxis)</label><input id="s_upi" value="${esc(s.upi)}">
+<label>Service reminder kitne din baad</label><input id="s_rem" type="number" value="${num(s.remDays)||60}"><label>Mechanics (comma se alag)</label><input id="s_mech" value="${esc(s.mechanics.join(", "))}">
+<h3>Rate list (₹)</h3>${JOBS.map((j,i)=>`<div class="chk"><span>${j}</span><input class="r" id="sr${i}" type="number" inputmode="numeric" value="${num(s.rates[j])}"></div>`).join("")}
+<button class="btn" onclick="saveSet()">Settings save karo</button></div>
+<div class="card"><h2>Backup</h2><button class="btn g" onclick="backup()">⬇️ Backup download karo (JSON)</button><button class="btn w" onclick="csv()">⬇️ Excel ke liye CSV</button>
+<label>Restore (backup file chuno)</label><input type="file" id="rf" accept=".json,application/json" onchange="restore(this.files[0])">
+<div class="muted">Backup file WhatsApp pe khud ko ya Google Drive mein bhej ke rakh lo.</div></div>
+<div class="card"><button class="btn w" onclick="if(confirm('Saara data mit jayega. Pehle backup liya?')&&confirm('Pakka?')){D=blank();save();go('home')}">🗑️ Saara data mitao</button></div>`}
+function saveSet(){const s=D.settings;s.name=$("#s_name").value.trim()||"Rehman Motors";s.tagline=$("#s_tag").value.trim();s.phone=$("#s_phone").value.trim();s.address=$("#s_addr").value.trim();s.upi=$("#s_upi").value.trim();s.remDays=num($("#s_rem").value)||60;
+s.mechanics=$("#s_mech").value.split(",").map(x=>x.trim()).filter(Boolean);if(!s.mechanics.length)s.mechanics=["Mama"];JOBS.forEach((j,i)=>s.rates[j]=num($("#sr"+i).value));save();alert("Save ho gaya ✔");render()}
+function dl(name,text,type){const a=document.createElement("a");a.href=URL.createObjectURL(new Blob([text],{type}));a.download=name;document.body.appendChild(a);a.click();a.remove()}
+function backup(){dl(`rehman-motors-backup-${today()}.json`,JSON.stringify(D,null,1),"application/json");D.lastBackup=today();save()}
+function csv(){const q=v=>`"${String(v??"").replace(/"/g,'""')}"`;const h=["Job No","Date","Naam","Phone","Gaon","Bike","Number","KM","Kaam","Parts","Labour","Parts Sale","Parts Cost","Total","Payment","Udhaar Baaki","Status","Mechanic","Delivered","Agli Service"];
+const r=D.jobs.map(j=>{const t=tot(j);return[j.no,j.date,j.cust.name,j.cust.phone,j.cust.gaon,j.bike.model,j.bike.number,j.bike.km,j.works.map(w=>w.name).join("; "),j.parts.map(p=>p.name+" x"+p.qty).join("; "),t.lab,t.ps,t.pc,t.total,j.pay,j.pay==="Udhaar"&&!j.paid?"Haan":"",j.status,j.mech,j.deliveredOn||"",j.nextService||""]});
+dl(`rehman-motors-jobs-${today()}.csv`,"\ufeff"+[h,...r].map(x=>x.map(q).join(",")).join("\n"),"text/csv")}
+function restore(f){if(!f)return;const r=new FileReader();r.onload=()=>{try{const x=JSON.parse(r.result);if(!x.settings||!Array.isArray(x.jobs))throw 0;if(!confirm(`Backup mein ${x.jobs.length} jobs hain. Abhi ka data badal jayega. Theek?`))return;x.exp=x.exp||[];D=x;save();alert("Restore ho gaya ✔");go("home")}catch(e){alert("Ye sahi backup file nahi hai")}};r.readAsText(f)}
+/* DEMO */
+function demo(){const t=today();const mk=(d,name,ph,bike,num_,works,parts,status,pay,del)=>{D.seq++;const j={id:"j"+D.seq+Date.now(),no:"RM-"+String(D.seq).padStart(4,"0"),date:d,cust:{name,phone:ph,gaon:"Devipur"},bike:{model:bike,number:num_,km:""},complaint:"",works:works.map(w=>({name:w[0],rate:w[1]})),parts,labourExtra:0,mech:"Mama",status,pay,paid:pay!=="Udhaar",deliveredOn:del,nextService:del?addDays(del,D.settings.remDays):null,remSent:false};D.jobs.push(j)};
+mk(addDays(t,-58),"DEMO Ramesh","9000000000","Splendor","JH00AA0001",[["General Service",300]],[{name:"Engine oil",qty:1,price:350,cost:290}],"Delivered","Cash",addDays(t,-58));
+mk(addDays(t,-2),"DEMO Suresh","9000000001","Shine","JH00AA0002",[["Puncture – Tube",80]],[],"Delivered","Udhaar",addDays(t,-2));
+mk(t,"DEMO Anil","9000000002","Pulsar","JH00AA0003",[["Chain-Sprocket Fitting",200]],[{name:"Chain set",qty:1,price:900,cost:750}],"Kaam chalu","UPI",null);
+D.exp.push({id:"e1",date:t,cat:"Bijli",amt:500,note:"DEMO"});save();render()}
+if("serviceWorker"in navigator&&location.protocol.startsWith("http"))navigator.serviceWorker.register("sw.js").catch(()=>{});
+render();
+</script></body></html>
