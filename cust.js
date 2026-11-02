@@ -131,6 +131,7 @@ function custCsv() {
 }
 
 /* BILL IMAGE (canvas) – Design A "Bold Red Premium" */
+const RM_LOGO = new Image(); RM_LOGO.src = "icons/logo-badge.png";
 function billCanvas(j) {
   const s = D.settings, t = tot(j), S = 2, W = 800, P = 36;
   const T = { ink: "#222", sub: "#666", card: "#FFF5F5", line: "#F3D0D0", zebra: "#FFF8F8", acc: "#C62828" };
@@ -152,11 +153,9 @@ function billCanvas(j) {
   x.fillStyle = grad(0, HH, "#B71C1C", "#E53935"); x.fillRect(0, 0, W, HH);
   x.fillStyle = "rgba(255,255,255,0.10)"; x.beginPath(); x.moveTo(W * 0.62, 0); x.lineTo(W, 0); x.lineTo(W, HH); x.lineTo(W * 0.48, HH); x.closePath(); x.fill();
   x.fillStyle = "rgba(255,255,255,0.07)"; x.beginPath(); x.moveTo(W * 0.74, 0); x.lineTo(W, 0); x.lineTo(W, HH); x.lineTo(W * 0.6, HH); x.closePath(); x.fill();
-  const ix = P + 46, iy = 88; x.fillStyle = "#fff"; x.beginPath(); x.arc(ix, iy, 46, 0, 7); x.fill();
-  x.save(); x.translate(ix, iy); x.strokeStyle = T.acc; x.fillStyle = T.acc; x.lineWidth = 6; x.beginPath(); x.arc(0, 0, 17, 0, 7); x.stroke();
-  for (let i = 0; i < 8; i++) { x.save(); x.rotate(i * Math.PI / 4); x.fillRect(-4, -27, 8, 9); x.restore() }
-  x.beginPath(); x.arc(0, 0, 6, 0, 7); x.fill(); x.rotate(-Math.PI / 4); x.lineCap = "round"; x.lineWidth = 7;
-  x.beginPath(); x.moveTo(-34, 0); x.lineTo(20, 0); x.stroke(); x.beginPath(); x.arc(30, 0, 11, 0.9, 2 * Math.PI - 0.9); x.stroke(); x.restore();
+  const ix = P + 46, iy = 88;
+  if (RM_LOGO.complete && RM_LOGO.naturalWidth) { x.save(); x.shadowColor = "rgba(0,0,0,0.35)"; x.shadowBlur = 10; x.drawImage(RM_LOGO, ix - 50, iy - 50, 100, 100); x.restore() }
+  else { x.fillStyle = "#191B20"; rr(ix - 50, iy - 50, 100, 100, 20); x.fill(); F(38, 900); txt("RM", ix, iy + 13, "center", "#E53935") }
   const hx = P + 112; F(44, 800); txt(fit(s.name || "Rehman Motors", W - hx - P), hx, 84, "left", "#fff");
   if (s.tagline) { F(21, 500); txt(fit(s.tagline, W - hx - P), hx, 118, "left", "rgba(255,255,255,0.92)") }
   if (contact) { F(17); txt(fit(contact, W - 2 * P), P, 178, "left", "rgba(255,255,255,0.92)") }
