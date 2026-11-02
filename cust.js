@@ -130,45 +130,91 @@ function custCsv() {
   dl(`rehman-motors-customers-${today()}.csv`, "\ufeff" + [h, ...r].map(x => x.map(q).join(",")).join("\n"), "text/csv");
 }
 
-/* BILL IMAGE (canvas) */
+/* BILL IMAGE (canvas) – Design A "Bold Red Premium" */
 function billCanvas(j) {
-  const s = D.settings, t = tot(j), W = 800, P = 40;
-  const rows = j.works.map(w => [w.name, "", num(w.rate)]); if (num(j.labourExtra)) rows.push(["Extra labour", "", num(j.labourExtra)]);
-  j.parts.forEach(p => rows.push([p.name, "x" + p.qty, num(p.qty) * num(p.price)]));
-  const qrOk = s.upi && typeof qrcode === "function";
-  const H = 2400;
-  const c = document.createElement("canvas"); c.width = W; c.height = H; const x = c.getContext("2d");
-  const F = (sz, b) => x.font = `${b ? "bold " : ""}${sz}px Roboto, "Noto Sans", Arial, sans-serif`;
-  const txt = (s_, X, Y, al) => { x.textAlign = al || "left"; x.fillText(s_, X, Y) };
-  const fit = (s_, w) => { s_ = String(s_ || ""); while (s_.length > 3 && x.measureText(s_).width > w) s_ = s_.slice(0, -2); return s_ };
-  x.fillStyle = "#fff"; x.fillRect(0, 0, W, H);
-  x.fillStyle = "#C62828"; x.fillRect(0, 0, W, 150);
-  x.fillStyle = "#fff"; F(40, 1); txt(s.name || "Rehman Motors", P, 58); F(22); txt(s.tagline || "", P, 92);
-  F(19); txt(fit([s.phone && "📞 " + s.phone, s.address].filter(Boolean).join("  ·  "), W - 2 * P), P, 126);
-  let y = 200; x.fillStyle = "#222"; F(26, 1); txt("BILL: " + j.no, P, y); F(22); txt("Date: " + fd(j.date), W - P, y, "right");
-  y += 44; F(22); txt(fit(`${j.cust.name || ""}  ·  ${j.cust.phone || ""}${j.cust.gaon ? "  ·  " + j.cust.gaon : ""}`, W - 2 * P), P, y);
-  y += 36; F(22, 1); txt(fit(`Bike: ${j.bike.model || ""} ${j.bike.number || ""}${j.bike.km ? "  ·  " + j.bike.km + " km" : ""}`, W - 2 * P), P, y);
-  y += 30; x.fillStyle = "#f3d6d6"; x.fillRect(P, y, W - 2 * P, 40); x.fillStyle = "#C62828"; F(20, 1); txt("Kaam / Part", P + 12, y + 27); txt("Qty", W - 250, y + 27, "center"); txt("₹", W - P - 12, y + 27, "right");
-  y += 40; x.fillStyle = "#222"; F(21);
-  rows.forEach((r, i) => { if (i % 2) { x.fillStyle = "#fafafa"; x.fillRect(P, y, W - 2 * P, 46); x.fillStyle = "#222" } txt(fit(r[0], W - 380), P + 12, y + 30); txt(r[1], W - 250, y + 30, "center"); txt(rs(r[2]), W - P - 12, y + 30, "right"); y += 46 });
-  x.strokeStyle = "#C62828"; x.lineWidth = 2; x.beginPath(); x.moveTo(P, y + 6); x.lineTo(W - P, y + 6); x.stroke();
-  y += 50; F(32, 1); x.fillStyle = "#C62828"; txt("Total: " + rs(t.total), W - P, y, "right");
-  y += 38; F(22, 1); const dA = dueAmt(j), due = dA > 0;
-  const pb = payBreak(j); x.fillStyle = "#222"; F(22);
-  const parts = [pb.Cash ? "Cash " + rs(pb.Cash) : "", pb.UPI ? "UPI " + rs(pb.UPI) : ""].filter(Boolean).join("  +  ");
-  if (parts) txt(parts, P, y);
-  F(22, 1); x.fillStyle = due ? "#C62828" : "#1f9d55"; txt(due ? `Baaki: ${rs(dA)}` : "Paid ✔", W - P, y, "right");
-  if (due) { y += 32; F(19); txt(paidAmt(j) > 0 ? "Status: Aanshik (Partial)" : "Status: Udhaar", W - P, y, "right") }
-  if (j.nextService) { y += 40; x.fillStyle = "#222"; F(21); txt("Agli service: " + fd(j.nextService), P, y) }
-  if (qrOk) {
-    try { const q = qrcode(0, "M"); q.addData(`upi://pay?pa=${s.upi}&pn=${encodeURIComponent(s.name)}&am=${due ? dA : ""}&cu=INR&tn=${j.no}`.replace("&am=&", "&")); q.make();
-      const n = q.getModuleCount(), sz = 220, cs = sz / n, qx = (W - sz) / 2, qy = y + 30; x.fillStyle = "#000";
-      for (let r = 0; r < n; r++) for (let cc = 0; cc < n; cc++) if (q.isDark(r, cc)) x.fillRect(Math.floor(qx + cc * cs), Math.floor(qy + r * cs), Math.ceil(cs), Math.ceil(cs));
-      F(19); x.fillStyle = "#444"; txt("Scan karke UPI se pay karein · " + s.upi, W / 2, qy + sz + 30, "center"); y = qy + sz + 40 } catch (e) { y += 10 }
-  } else if (s.upi) { y += 40; F(21); x.fillStyle = "#222"; txt("UPI: " + s.upi, P, y) }
-  const FH = Math.ceil(y + 40 + 70), o = document.createElement("canvas"); o.width = W; o.height = FH; const ox = o.getContext("2d");
-  ox.drawImage(c, 0, 0, W, FH, 0, 0, W, FH); ox.fillStyle = "#C62828"; ox.fillRect(0, FH - 70, W, 70); ox.fillStyle = "#fff";
-  ox.font = `bold 24px Roboto, "Noto Sans", Arial, sans-serif`; ox.textAlign = "center"; ox.fillText("Dhanyavaad! 🙏  Aapki bike, hamari zimmedari.", W / 2, FH - 27);
+  const s = D.settings, t = tot(j), S = 2, W = 800, P = 36;
+  const T = { ink: "#222", sub: "#666", card: "#FFF5F5", line: "#F3D0D0", zebra: "#FFF8F8", acc: "#C62828" };
+  const c = document.createElement("canvas"); const items = [];
+  j.works.forEach(w => items.push([w.name, 1, num(w.rate)])); if (num(j.labourExtra)) items.push(["Extra labour", 1, num(j.labourExtra)]);
+  j.parts.forEach(p => items.push([p.name || "Part", num(p.qty) || 1, num(p.price)]));
+  const n = items.length, MAXH = 900 + n * 48 + 400; c.width = W * S; c.height = MAXH * S;
+  const x = c.getContext("2d"); x.scale(S, S);
+  const FN = '"Noto Sans", "Noto Sans Devanagari", Roboto, Arial, sans-serif';
+  const F = (sz, w) => x.font = `${w || 400} ${sz}px ${FN}`;
+  const txt = (v, X, Y, al, col) => { if (col) x.fillStyle = col; x.textAlign = al || "left"; x.fillText(v, X, Y) };
+  const fit = (v, w) => { v = String(v ?? ""); if (x.measureText(v).width <= w) return v; while (v.length > 1 && x.measureText(v + "…").width > w) v = v.slice(0, -1); return v + "…" };
+  const rr = (X, Y, w, h, r) => { x.beginPath(); if (x.roundRect) x.roundRect(X, Y, w, h, r); else x.rect(X, Y, w, h) };
+  const grad = (y0, y1, a, b) => { const g = x.createLinearGradient(0, y0, 0, y1); g.addColorStop(0, a); g.addColorStop(1, b); return g };
+  x.fillStyle = "#fff"; x.fillRect(0, 0, W, MAXH);
+  // header
+  const contact = [s.phone && "📞 " + s.phone, s.address && "📍 " + s.address].filter(Boolean).join("   ·   ");
+  const HH = contact ? 210 : 170;
+  x.fillStyle = grad(0, HH, "#B71C1C", "#E53935"); x.fillRect(0, 0, W, HH);
+  x.fillStyle = "rgba(255,255,255,0.10)"; x.beginPath(); x.moveTo(W * 0.62, 0); x.lineTo(W, 0); x.lineTo(W, HH); x.lineTo(W * 0.48, HH); x.closePath(); x.fill();
+  x.fillStyle = "rgba(255,255,255,0.07)"; x.beginPath(); x.moveTo(W * 0.74, 0); x.lineTo(W, 0); x.lineTo(W, HH); x.lineTo(W * 0.6, HH); x.closePath(); x.fill();
+  const ix = P + 46, iy = 88; x.fillStyle = "#fff"; x.beginPath(); x.arc(ix, iy, 46, 0, 7); x.fill();
+  x.save(); x.translate(ix, iy); x.strokeStyle = T.acc; x.fillStyle = T.acc; x.lineWidth = 6; x.beginPath(); x.arc(0, 0, 17, 0, 7); x.stroke();
+  for (let i = 0; i < 8; i++) { x.save(); x.rotate(i * Math.PI / 4); x.fillRect(-4, -27, 8, 9); x.restore() }
+  x.beginPath(); x.arc(0, 0, 6, 0, 7); x.fill(); x.rotate(-Math.PI / 4); x.lineCap = "round"; x.lineWidth = 7;
+  x.beginPath(); x.moveTo(-34, 0); x.lineTo(20, 0); x.stroke(); x.beginPath(); x.arc(30, 0, 11, 0.9, 2 * Math.PI - 0.9); x.stroke(); x.restore();
+  const hx = P + 112; F(44, 800); txt(fit(s.name || "Rehman Motors", W - hx - P), hx, 84, "left", "#fff");
+  if (s.tagline) { F(21, 500); txt(fit(s.tagline, W - hx - P), hx, 118, "left", "rgba(255,255,255,0.92)") }
+  if (contact) { F(17); txt(fit(contact, W - 2 * P), P, 178, "left", "rgba(255,255,255,0.92)") }
+  let y = HH + 30;
+  // title + status
+  const due = dueAmt(j), paid = paidAmt(j);
+  F(15, 700); txt("BILL / CASH MEMO", P, y + 6, "left", T.sub); F(30, 800); txt("BILL  " + j.no, P, y + 42, "left", T.ink);
+  const pill = due <= 0 ? "✔ Paid" : paid > 0 ? "● Aanshik (Partial)" : "● Udhaar";
+  F(18, 700); const pw = x.measureText(pill).width + 34;
+  x.fillStyle = due > 0 ? "#FFE9E7" : "#E6F6EC"; rr(W - P - pw, y + 12, pw, 38, 19); x.fill(); txt(pill, W - P - pw / 2, y + 38, "center", due > 0 ? T.acc : "#1E8E4E");
+  y += 70;
+  // info block
+  const info = [["👤", "Customer", j.cust.name], ["📱", "Mobile", j.cust.phone], ["🏍️", "Bike", j.bike.model], ["🔢", "Bike no.", j.bike.number], ["📅", "Date", fd(j.date)], ["🔧", "Mechanic", j.mech], ["📍", "Gaon", j.cust.gaon], ["🛣️", "KM", j.bike.km]].filter(r => String(r[2] ?? "").trim());
+  const rows = Math.ceil(info.length / 2), bh = rows * 64 + 24, cw2 = (W - 2 * P) / 2;
+  x.fillStyle = T.card; rr(P, y, W - 2 * P, bh, 18); x.fill(); x.fillStyle = T.acc; rr(P, y, 8, bh, 4); x.fill();
+  info.forEach((it, i) => { const X = P + 26 + (i % 2) * cw2, Y = y + 22 + Math.floor(i / 2) * 64;
+    x.fillStyle = "#fff"; x.beginPath(); x.arc(X + 20, Y + 22, 20, 0, 7); x.fill(); F(19); txt(it[0], X + 20, Y + 29, "center", T.ink);
+    F(14, 600); txt(it[1].toUpperCase(), X + 52, Y + 14, "left", T.sub); F(20, 700); txt(fit(it[2], cw2 - 80), X + 52, Y + 40, "left", T.ink) });
+  y += bh + 26;
+  // items table
+  const cols = [P + 20, W - 330, W - 215, W - P - 20], th = 46, rh = 48, tw = W - 2 * P;
+  x.save(); rr(P, y, tw, th + rh * n, 16); x.clip(); x.fillStyle = "#fff"; x.fillRect(P, y, tw, th + rh * n);
+  x.fillStyle = T.acc; x.fillRect(P, y, tw, th); F(16, 800); x.fillStyle = "#fff";
+  txt("KAAM / PART", cols[0], y + 29); txt("QTY", cols[1], y + 29, "center"); txt("RATE", cols[2], y + 29, "right"); txt("AMOUNT", cols[3], y + 29, "right");
+  items.forEach((r, i) => { const Y = y + th + i * rh; x.fillStyle = i % 2 ? T.zebra : "#fff"; x.fillRect(P, Y, tw, rh);
+    F(19, 500); txt(fit(r[0], cols[1] - cols[0] - 40), cols[0], Y + 31, "left", T.ink); F(18); txt(String(r[1]), cols[1], Y + 31, "center", T.sub); txt(rs(r[2]), cols[2], Y + 31, "right", T.sub);
+    F(19, 700); txt(rs(r[1] * r[2]), cols[3], Y + 31, "right", T.ink) });
+  if (!n) { F(18); txt("—", W / 2, y + th + 31, "center", T.sub) }
+  x.restore(); x.strokeStyle = T.line; x.lineWidth = 1.5; rr(P, y, tw, th + rh * Math.max(n, 1), 16); x.stroke();
+  y += th + rh * Math.max(n, 1) + 22;
+  // total
+  x.fillStyle = grad(y, y + 88, "#C62828", "#8E0000"); rr(P, y, tw, 88, 18); x.fill();
+  F(22, 700); txt("KUL TOTAL", P + 28, y + 54, "left", "rgba(255,255,255,0.9)"); F(15, 500); txt(`${n} items`, P + 178, y + 53, "left", "rgba(255,255,255,0.7)");
+  F(42, 900); txt(rs(t.total), W - P - 28, y + 60, "right", "#fff"); y += 112;
+  // payment chips
+  const pb = payBreak(j), chips = [];
+  if (pb.Cash) chips.push(["💵 Cash", pb.Cash, "#E8F7EE", "#1E8E4E"]); if (pb.UPI) chips.push(["📱 UPI", pb.UPI, "#E8F0FE", "#1A5FD0"]);
+  if (due > 0) chips.push(["⏳ Baaki", due, "#FFE9E7", T.acc]);
+  F(16, 800); txt("PAYMENT", P, y, "left", T.sub); y += 14;
+  if (chips.length) { const k = chips.length, cw = (tw - 12 * (k - 1)) / k;
+    chips.forEach((ch, i) => { const X = P + i * (cw + 12); x.fillStyle = ch[2]; rr(X, y, cw, 84, 16); x.fill();
+      if (ch[0].includes("Baaki")) { x.strokeStyle = T.acc; x.lineWidth = 2.5; rr(X + 1, y + 1, cw - 2, 82, 15); x.stroke() }
+      F(18, 700); txt(ch[0], X + 18, y + 32, "left", "#444"); F(28, 900); txt(rs(ch[1]), X + 18, y + 68, "left", ch[3]) });
+    y += 104 } else { y += 10 }
+  if (due > 0) { F(17, 600); txt(fit(`Mila: ${rs(paid)}  ·  Baaki: ${rs(due)} (agli baar jama karein)`, tw), P, y + 6, "left", T.acc); y += 30 }
+  else { x.fillStyle = "#E6F6EC"; rr(P, y - 4, tw, 50, 14); x.fill(); F(20, 800); txt("✔ Poora payment mil gaya – Paid", W / 2, y + 28, "center", "#1E8E4E"); y += 66 }
+  // next service
+  if (j.nextService) { x.fillStyle = "#FFF4D6"; rr(P, y, tw, 62, 14); x.fill(); x.fillStyle = "#F4B400"; rr(P, y, 10, 62, 5); x.fill();
+    F(22); txt("🔔", P + 30, y + 40, "left", T.ink); F(20, 700); txt("Agli service: " + fd(j.nextService), P + 70, y + 30, "left", "#7A5600");
+    F(16); txt("Time par service = lambi umar wali bike", P + 70, y + 52, "left", "#8A6D1F"); y += 86 }
+  // footer (cropped)
+  const foot2 = [s.timing && "⏰ Timing: " + s.timing, s.name].filter(Boolean).join("  ·  ");
+  const fh = 128, FH = Math.ceil(y + fh), o = document.createElement("canvas"); o.width = W * S; o.height = FH * S;
+  const ox = o.getContext("2d"); ox.drawImage(c, 0, 0, W * S, FH * S, 0, 0, W * S, FH * S); ox.scale(S, S);
+  const fy = FH - fh; ox.fillStyle = T.acc; ox.fillRect(0, fy, W, fh);
+  ox.fillStyle = "rgba(255,255,255,0.35)"; for (let i = 12; i < W; i += 22) { ox.beginPath(); ox.arc(i, fy + 18, 3, 0, 7); ox.fill() }
+  ox.textAlign = "center"; ox.fillStyle = "#fff"; ox.font = `800 26px ${FN}`; ox.fillText("Dhanyavaad! 🙏 Aapki bike, hamari zimmedari", W / 2, fy + 62);
+  ox.fillStyle = "rgba(255,255,255,0.88)"; ox.font = `400 17px ${FN}`; ox.fillText(foot2, W / 2, fy + 96);
   return o;
 }
 const billName = j => `Bill-${j.no}.png`;

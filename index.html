@@ -189,7 +189,7 @@ function set(){const s=D.settings;
 return `<div id="dataNote">${dataNote()}</div>
 ${window.cloudCard?cloudCard():`<div class="card"><h2>☁️ Cloud Sync</h2><div class="muted">⚪ Cloud sync abhi set nahi hai</div></div>`}
 <div class="card"><h2>Garage ki details</h2><label>Garage ka naam</label><input id="s_name" value="${esc(s.name)}"><label>Tagline</label><input id="s_tag" value="${esc(s.tagline)}">
-<label>Phone</label><input id="s_phone" type="tel" value="${esc(s.phone)}"><label>Pata</label><input id="s_addr" value="${esc(s.address)}"><label>UPI ID (jaise naam@okaxis)</label><input id="s_upi" value="${esc(s.upi)}">
+<label>Phone</label><input id="s_phone" type="tel" value="${esc(s.phone)}"><label>Pata</label><input id="s_addr" value="${esc(s.address)}"><label>Timing (jaise Subah 9 – Shaam 8)</label><input id="s_timing" value="${esc(s.timing||"")}"><label>UPI ID (jaise naam@okaxis)</label><input id="s_upi" value="${esc(s.upi)}">
 <label>Service reminder kitne din baad</label><input id="s_rem" type="number" value="${num(s.remDays)||60}"><label>Mechanics (comma se alag)</label><input id="s_mech" value="${esc(s.mechanics.join(", "))}">
 <h3>Rate list (₹)</h3>${JOBS.map((j,i)=>`<div class="chk"><span>${j}</span><input class="r" id="sr${i}" type="number" inputmode="numeric" value="${num(s.rates[j])}"></div>`).join("")}
 <button class="btn" onclick="saveSet()">Settings save karo</button></div>
@@ -198,7 +198,7 @@ ${window.cloudCard?cloudCard():`<div class="card"><h2>☁️ Cloud Sync</h2><div
 <div class="muted">Backup file WhatsApp pe khud ko ya Google Drive mein bhej ke rakh lo.</div></div>
 <div class="card"><button class="btn w" onclick="if(confirm('Saara data mit jayega (cloud login hai to sab phones se bhi). Pehle backup liya?')&&confirm('Pakka?')){D=blank();save();go('home')}">🗑️ Saara data mitao</button></div>`}
 function dataNote(){return window.cloudLinked&&cloudLinked()?`<div class="muted" style="color:#1b7f3b;margin:0 0 10px">☁️ Data cloud mein safe hai (sync chalu)</div>`:`<div class="warn">⚠️ Saara data sirf isi phone mein save hai. Phone kho gaya ya browser data clear hua to data chala jayega. Har hafte Backup zaroor lo.</div>`}
-function saveSet(){const s=D.settings;s.name=$("#s_name").value.trim()||"Rehman Motors";s.tagline=$("#s_tag").value.trim();s.phone=$("#s_phone").value.trim();s.address=$("#s_addr").value.trim();s.upi=$("#s_upi").value.trim();s.remDays=num($("#s_rem").value)||60;
+function saveSet(){const s=D.settings;s.name=$("#s_name").value.trim()||"Rehman Motors";s.tagline=$("#s_tag").value.trim();s.phone=$("#s_phone").value.trim();s.address=$("#s_addr").value.trim();s.timing=$("#s_timing").value.trim();s.upi=$("#s_upi").value.trim();s.remDays=num($("#s_rem").value)||60;
 s.mechanics=$("#s_mech").value.split(",").map(x=>x.trim()).filter(Boolean);if(!s.mechanics.length)s.mechanics=["Mama"];JOBS.forEach((j,i)=>s.rates[j]=num($("#sr"+i).value));save();alert("Save ho gaya ✔");render()}
 function doPrint(){if(window.Android&&Android.print)Android.print();else print()}
 function appBack(){if(view!=="home"){go("home");return true}return false}
@@ -217,7 +217,6 @@ D.exp.push({id:"e1",date:t,cat:"Bijli",amt:500,note:"DEMO"});save();render()}
 if(!window.Android&&"serviceWorker"in navigator&&location.protocol.startsWith("http"))navigator.serviceWorker.register("sw.js").catch(()=>{});
 render();
 </script>
-<script src="vendor/qrcode.js"></script>
 <script src="cust.js"></script>
 <script src="jobs.js"></script>
 <script src="firebase-config.js"></script>
