@@ -1,0 +1,35 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() { return request.auth != null; }
+    function isMember(g) {
+      return signedIn() && exists(/databases/$(database)/documents/garages/$(g))
+        && get(/databases/$(database)/documents/garages/$(g)).data.members[request.auth.uid] == true;
+    }
+    // Har user ka apna chhota record (kaunse garage mein hai)
+    match /users/{uid} {
+      allow read, write: if signedIn() && request.auth.uid == uid;
+    }
+    match /garages/{g} {
+      allow read: if isMember(g);
+      // Naya garage: banane wala hi owner aur akela member
+      allow create: if signedIn() && request.resource.data.owner == request.auth.uid
+        && request.resource.data.members.keys().hasOnly([request.auth.uid]);
+      // Members garage ka naam badal sakte hain; owner/members sirf owner badle
+      allow update: if (isMember(g)
+            && request.resource.data.owner == resource.data.owner
+            && (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['members'])
+                || resource.data.owner == request.auth.uid))
+        // Invite code se join: sirf khud ko members mein jodna
+        || (signedIn()
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['members'])
+            && request.resource.data.members.diff(resource.data.members).affectedKeys().hasOnly([request.auth.uid])
+            && request.resource.data.members[request.auth.uid] == true);
+      allow delete: if signedIn() && resource.data.owner == request.auth.uid;
+      // Garage ka data: jobs (customer + bike + job card + bill), exp (kharcha), meta (settings)
+      match /{col}/{docId} {
+        allow read, write: if isMember(g) && col in ['jobs', 'exp', 'meta'];
+      }
+    }
+  }
+}

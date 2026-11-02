@@ -32,15 +32,17 @@ html:not(.inapp) body{padding-bottom:calc(84px + env(safe-area-inset-bottom))}
 html.inapp nav{padding-bottom:0}
 </style></head><body>
 <script>if(window.Android)document.documentElement.classList.add("inapp")</script>
-<header><h1 id="gname">Rehman Motors</h1><small>Devipur ka bharosa</small></header>
+<header><h1 id="gname">Rehman Motors</h1><small>Devipur ka bharosa</small><span id="cs" onclick="go('set')" style="position:absolute;right:12px;top:50%;transform:translateY(-50%);font-size:18px"></span></header>
 <main id="app"></main>
 <nav id="nav"></nav>
 <script>
 const JOBS=["General Service","Engine Oil Change (labour)","Puncture – Tube","Puncture – Tubeless","Brake Shoe / Pad Fitting","Chain-Sprocket Fitting","Clutch Plate Badalna","Carburetor Cleaning","Spark Plug Badalna","Battery Check / Charging","Bike Wash","Wash + Polish"];
 const KEY="rehmanMotorsData_v1";
 function blank(){return{settings:{name:"Rehman Motors",tagline:"Devipur ka bharosa",phone:"",address:"",upi:"",remDays:60,mechanics:["Mama","Staff 1","Staff 2"],rates:Object.fromEntries(JOBS.map(j=>[j,0]))},jobs:[],exp:[],seq:0}}
-let D;try{D=JSON.parse(localStorage.getItem(KEY))||blank()}catch(e){D=blank()}
-const save=()=>localStorage.setItem(KEY,JSON.stringify(D));
+let D;try{D=JSON.parse(localStorage.getItem(KEY))}catch(e){}
+if(!D&&window.Android&&Android.getStash){try{const x=JSON.parse(Android.getStash()||"null");if(x&&x.settings){D=x;localStorage.setItem(KEY,JSON.stringify(D))}}catch(e){}}
+if(!D)D=blank();
+const save=()=>{localStorage.setItem(KEY,JSON.stringify(D));if(window.onDataSaved)try{onDataSaved()}catch(e){console.error(e)}};
 const $=s=>document.querySelector(s);
 const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const today=()=>{const d=new Date();return new Date(d.getTime()-d.getTimezoneOffset()*6e4).toISOString().slice(0,10)};
@@ -102,7 +104,7 @@ const n=D.jobs.filter(x=>x.cust.phone===p.cust.phone).length;$("#f_hint").textCo
 $("#f_phone").addEventListener("blur",af);$("#f_number").addEventListener("blur",af);$("#f_phone").addEventListener("input",()=>{if($("#f_phone").value.replace(/\D/g,"").length===10)af()});calc()}
 function setDelivered(j){if(j.status==="Delivered"&&!j.deliveredOn){j.deliveredOn=today();j.nextService=addDays(j.deliveredOn,D.settings.remDays);j.remSent=false}if(j.status!=="Delivered"){j.deliveredOn=null;j.nextService=null}}
 function saveJob(){const f=readForm();if(!f.cust.name&&!f.cust.phone){alert("Customer ka naam ya phone likho");return}
-let j;if(editId){j=D.jobs.find(x=>x.id===editId);Object.assign(j,f)}else{D.seq++;j={id:"j"+Date.now(),no:"RM-"+String(D.seq).padStart(4,"0"),date:today(),...f,deliveredOn:null,nextService:null,remSent:false,paid:f.pay!=="Udhaar"};D.jobs.push(j)}
+let j;if(editId){j=D.jobs.find(x=>x.id===editId);Object.assign(j,f)}else{D.seq++;j={id:"j"+Date.now()+Math.random().toString(36).slice(2,6),no:"RM-"+String(D.seq).padStart(4,"0"),date:today(),...f,deliveredOn:null,nextService:null,remSent:false,paid:f.pay!=="Udhaar"};D.jobs.push(j)}
 if(f.pay!=="Udhaar")j.paid=true;else if(editId)j.paid=false;setDelivered(j);save();go("card",j.id)}
 function delJob(id){if(confirm("Pakka mitana hai?")){D.jobs=D.jobs.filter(j=>j.id!==id);save();go("home")}}
 /* JOB CARD / BILL */
@@ -150,7 +152,7 @@ function kharcha(){const l=D.exp.slice().reverse().slice(0,30);
 return `<div class="card"><h2>💸 Kharcha likho</h2><label>Date</label><input id="e_date" type="date" value="${today()}"><label>Kis cheez ka</label><select id="e_cat">${["Rent","Bijli","Salary","Parts kharid","Other"].map(x=>`<option>${x}</option>`).join("")}</select>
 <label>Kitna ₹</label><input id="e_amt" type="number" inputmode="numeric"><label>Note</label><input id="e_note"><button class="btn" onclick="addExp()">Save karo</button></div>
 <div class="card"><h2>Pichhle kharche</h2>${l.length?l.map(e=>`<div class="item">${fd(e.date)} · <b>${esc(e.cat)}</b> · ${rs(e.amt)} <span class="muted">${esc(e.note)}</span> <button class="btn s w" onclick="delExp('${e.id}')">Mitao</button></div>`).join(""):'<p class="muted">Abhi koi kharcha nahi likha.</p>'}</div>`}
-function addExp(){const a=num($("#e_amt").value);if(!a){alert("Amount likho");return}D.exp.push({id:"e"+Date.now(),date:$("#e_date").value||today(),cat:$("#e_cat").value,amt:a,note:$("#e_note").value.trim()});save();render()}
+function addExp(){const a=num($("#e_amt").value);if(!a){alert("Amount likho");return}D.exp.push({id:"e"+Date.now()+Math.random().toString(36).slice(2,6),date:$("#e_date").value||today(),cat:$("#e_cat").value,amt:a,note:$("#e_note").value.trim()});save();render()}
 function delExp(id){D.exp=D.exp.filter(e=>e.id!==id);save();render()}
 /* HISAAB / P&L */
 function range(){const t=today();if(plMode==="today")return[t,t];if(plMode==="month")return[t.slice(0,8)+"01",t];return[plFrom,plTo]}
@@ -170,6 +172,7 @@ ${Object.keys(days).length>1?`<div class="card"><h2>Roz ki kamai</h2><div class=
 /* SETTINGS */
 function set(){const s=D.settings;
 return `<div class="warn">⚠️ Saara data sirf isi phone mein save hai. Phone kho gaya ya browser data clear hua to data chala jayega. Har hafte Backup zaroor lo.</div>
+${window.cloudCard?cloudCard():`<div class="card"><h2>☁️ Cloud Sync</h2><div class="muted">⚪ Cloud sync abhi set nahi hai</div></div>`}
 <div class="card"><h2>Garage ki details</h2><label>Garage ka naam</label><input id="s_name" value="${esc(s.name)}"><label>Tagline</label><input id="s_tag" value="${esc(s.tagline)}">
 <label>Phone</label><input id="s_phone" type="tel" value="${esc(s.phone)}"><label>Pata</label><input id="s_addr" value="${esc(s.address)}"><label>UPI ID (jaise naam@okaxis)</label><input id="s_upi" value="${esc(s.upi)}">
 <label>Service reminder kitne din baad</label><input id="s_rem" type="number" value="${num(s.remDays)||60}"><label>Mechanics (comma se alag)</label><input id="s_mech" value="${esc(s.mechanics.join(", "))}">
@@ -178,7 +181,7 @@ return `<div class="warn">⚠️ Saara data sirf isi phone mein save hai. Phone 
 <div class="card"><h2>Backup</h2><button class="btn g" onclick="backup()">⬇️ Backup download karo (JSON)</button><button class="btn w" onclick="csv()">⬇️ Excel ke liye CSV</button>
 <label>Restore (backup file chuno)</label><input type="file" id="rf" accept=".json,application/json" onchange="restore(this.files[0])">
 <div class="muted">Backup file WhatsApp pe khud ko ya Google Drive mein bhej ke rakh lo.</div></div>
-<div class="card"><button class="btn w" onclick="if(confirm('Saara data mit jayega. Pehle backup liya?')&&confirm('Pakka?')){D=blank();save();go('home')}">🗑️ Saara data mitao</button></div>`}
+<div class="card"><button class="btn w" onclick="if(confirm('Saara data mit jayega (cloud login hai to sab phones se bhi). Pehle backup liya?')&&confirm('Pakka?')){D=blank();save();go('home')}">🗑️ Saara data mitao</button></div>`}
 function saveSet(){const s=D.settings;s.name=$("#s_name").value.trim()||"Rehman Motors";s.tagline=$("#s_tag").value.trim();s.phone=$("#s_phone").value.trim();s.address=$("#s_addr").value.trim();s.upi=$("#s_upi").value.trim();s.remDays=num($("#s_rem").value)||60;
 s.mechanics=$("#s_mech").value.split(",").map(x=>x.trim()).filter(Boolean);if(!s.mechanics.length)s.mechanics=["Mama"];JOBS.forEach((j,i)=>s.rates[j]=num($("#sr"+i).value));save();alert("Save ho gaya ✔");render()}
 function doPrint(){if(window.Android&&Android.print)Android.print();else print()}
@@ -195,6 +198,9 @@ mk(addDays(t,-58),"DEMO Ramesh","9000000000","Splendor","JH00AA0001",[["General 
 mk(addDays(t,-2),"DEMO Suresh","9000000001","Shine","JH00AA0002",[["Puncture – Tube",80]],[],"Delivered","Udhaar",addDays(t,-2));
 mk(t,"DEMO Anil","9000000002","Pulsar","JH00AA0003",[["Chain-Sprocket Fitting",200]],[{name:"Chain set",qty:1,price:900,cost:750}],"Kaam chalu","UPI",null);
 D.exp.push({id:"e1",date:t,cat:"Bijli",amt:500,note:"DEMO"});save();render()}
-if("serviceWorker"in navigator&&location.protocol.startsWith("http"))navigator.serviceWorker.register("sw.js").catch(()=>{});
+if(!window.Android&&"serviceWorker"in navigator&&location.protocol.startsWith("http"))navigator.serviceWorker.register("sw.js").catch(()=>{});
 render();
-</script></body></html>
+</script>
+<script src="firebase-config.js"></script>
+<script type="module" src="cloud.js"></script>
+</body></html>
