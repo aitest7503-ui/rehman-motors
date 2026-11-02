@@ -8,7 +8,9 @@ S.h = S.h || {}; S.p = S.p || {};           // h: id->hash (last known), p: pend
 const saveS = () => localStorage.setItem(SK, JSON.stringify(S));
 const C = { ready: READY, user: null, gid: S.gid || null, state: READY ? "login nahi" : "off", err: "", busy: false };
 let fb = null, unsubs = [], pushT = null;
-const COLS = { jobs: "jobs", exp: "exp" };
+const COLS = { jobs: "jobs", exp: "exp", cust: "cust" };
+// Customers Firestore mein garages/{code}/meta/c_<id> par (published rules mein "meta" allowed hai)
+const ref = (col, id) => col === "cust" ? fb.fs.doc(fb.db, "garages", C.gid, "meta", "c_" + id) : fb.fs.doc(fb.db, "garages", C.gid, col, id);
 const strip = o => { const x = { ...o }; delete x.updatedAt; delete x.deleted; return JSON.stringify(x) };
 const rawSave = () => localStorage.setItem(KEY, JSON.stringify(D));
 
@@ -35,10 +37,10 @@ async function push() {
     for (let i = 0; i < keys.length; i += 400) {
       const b = writeBatch(fb.db);
       for (const k of keys.slice(i, i + 400)) {
-        const [col, id] = k.split("/"); const ref = doc(fb.db, "garages", C.gid, col, id);
-        if (k === "meta/settings") b.set(ref, { settings: D.settings, seq: D.seq || 0, updatedAt: D.settingsAt || Date.now() });
-        else if (S.p[k] === "del") b.set(ref, { id, deleted: true, updatedAt: Date.now() });
-        else { const it = D[col].find(x => x.id === id); if (it) b.set(ref, JSON.parse(JSON.stringify(it))) }
+        const [col, id] = k.split("/"); const rf = ref(col, id);
+        if (k === "meta/settings") b.set(rf, { settings: D.settings, seq: D.seq || 0, updatedAt: D.settingsAt || Date.now() });
+        else if (S.p[k] === "del") b.set(rf, { id, deleted: true, updatedAt: Date.now() });
+        else { const it = D[col].find(x => x.id === id); if (it) b.set(rf, JSON.parse(JSON.stringify(it))) }
       }
       await b.commit();
       keys.slice(i, i + 400).forEach(k => delete S.p[k]);
@@ -52,7 +54,10 @@ function applyRemote(col, snap) {
   let changed = false;
   snap.docChanges().forEach(ch => {
     if (ch.doc.metadata.hasPendingWrites) return;
-    const r = ch.doc.data(), id = ch.doc.id, k = col + "/" + id;
+    let r = ch.doc.data(), id = ch.doc.id, col0 = col;
+    if (col === "meta" && id.startsWith("c_")) { col = "cust"; id = id.slice(2) }
+    const k = col + "/" + id;
+    try {
     if (col === "meta") {
       if (id !== "settings") return;
       if (!S.p[k] && (r.updatedAt || 0) > (D.settingsAt || 0)) { D.settings = r.settings; D.settingsAt = r.updatedAt; changed = true }
@@ -64,10 +69,11 @@ function applyRemote(col, snap) {
     if (S.p[k] === "del") return;
     if (r.deleted) { if (loc && (loc.updatedAt || 0) <= r.updatedAt) { arr.splice(i, 1); delete S.h[k]; delete S.p[k]; changed = true } return }
     if (!loc || (r.updatedAt || 0) > (loc.updatedAt || 0)) { if (loc) arr[i] = r; else arr.push(r); S.h[k] = strip(r); delete S.p[k]; changed = true }
+    } finally { col = col0 }
   });
   if (col === "jobs" && changed) { const mx = Math.max(0, ...D.jobs.map(j => parseInt(String(j.no || "").replace(/\D/g, "")) || 0)); if (mx > (D.seq || 0)) D.seq = mx; S.h["meta/settings"] = JSON.stringify({ s: D.settings, seq: D.seq }) }
   S.last = Date.now(); saveS();
-  if (changed) { rawSave(); if (view !== "job") render() }
+  if (changed) { rawSave(); if (!["job", "camp", "custEdit"].includes(view)) render() }
   upd();
 }
 
