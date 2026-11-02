@@ -1,4 +1,4 @@
-const C='rm-v8';const F=['./','./index.html','./manifest.webmanifest','./icon.svg','./icons/icon-192.png','./icons/icon-512.png','./icons/logo-badge.png','./icons/icon-maskable-512.png','./firebase-config.js','./cloud.js','./cust.js','./jobs.js','./vendor/firebase-app.js','./vendor/firebase-auth.js','./vendor/firebase-firestore.js'];
+const C='rm-v9';const F=['./','./index.html','./manifest.webmanifest','./icon.svg','./icons/icon-192.png','./icons/icon-512.png','./icons/logo-badge.png','./icons/logo-full-badge.png','./icons/icon-maskable-512.png','./firebase-config.js','./cloud.js','./cust.js','./jobs.js','./vendor/firebase-app.js','./vendor/firebase-auth.js','./vendor/firebase-firestore.js'];
 self.addEventListener('install',e=>{e.waitUntil(caches.open(C).then(c=>c.addAll(F)));self.skipWaiting()});
 self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(k=>Promise.all(k.filter(x=>x!==C).map(x=>caches.delete(x)))));self.clients.claim()});
 self.addEventListener('fetch',e=>{const u=new URL(e.request.url);if(e.request.method!=='GET')return;

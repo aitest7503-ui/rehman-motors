@@ -131,7 +131,7 @@ function custCsv() {
 }
 
 /* BILL IMAGE (canvas) – Design A "Bold Red Premium" */
-const RM_LOGO = new Image(); RM_LOGO.src = "icons/logo-badge.png";
+const RM_LOGO = new Image(); RM_LOGO.src = "icons/logo-full-badge.png";
 function billCanvas(j) {
   const s = D.settings, t = tot(j), S = 2, W = 800, P = 36;
   const T = { ink: "#222", sub: "#666", card: "#FFF5F5", line: "#F3D0D0", zebra: "#FFF8F8", acc: "#C62828" };
@@ -154,9 +154,10 @@ function billCanvas(j) {
   x.fillStyle = "rgba(255,255,255,0.10)"; x.beginPath(); x.moveTo(W * 0.62, 0); x.lineTo(W, 0); x.lineTo(W, HH); x.lineTo(W * 0.48, HH); x.closePath(); x.fill();
   x.fillStyle = "rgba(255,255,255,0.07)"; x.beginPath(); x.moveTo(W * 0.74, 0); x.lineTo(W, 0); x.lineTo(W, HH); x.lineTo(W * 0.6, HH); x.closePath(); x.fill();
   const ix = P + 46, iy = 88;
-  if (RM_LOGO.complete && RM_LOGO.naturalWidth) { x.save(); x.shadowColor = "rgba(0,0,0,0.35)"; x.shadowBlur = 10; x.drawImage(RM_LOGO, ix - 50, iy - 50, 100, 100); x.restore() }
+  const LW = 140, LH = RM_LOGO.naturalWidth ? Math.round(LW * RM_LOGO.naturalHeight / RM_LOGO.naturalWidth) : 100;
+  if (RM_LOGO.complete && RM_LOGO.naturalWidth) { x.save(); x.shadowColor = "rgba(0,0,0,0.35)"; x.shadowBlur = 10; x.drawImage(RM_LOGO, P, iy - LH / 2, LW, LH); x.restore() }
   else { x.fillStyle = "#191B20"; rr(ix - 50, iy - 50, 100, 100, 20); x.fill(); F(38, 900); txt("RM", ix, iy + 13, "center", "#E53935") }
-  const hx = P + 112; F(44, 800); txt(fit(s.name || "Rehman Motors", W - hx - P), hx, 84, "left", "#fff");
+  const hx = P + (RM_LOGO.naturalWidth ? 160 : 112); F(44, 800); txt(fit(s.name || "Rehman Motors", W - hx - P), hx, 84, "left", "#fff");
   if (s.tagline) { F(21, 500); txt(fit(s.tagline, W - hx - P), hx, 118, "left", "rgba(255,255,255,0.92)") }
   if (contact) { F(17); txt(fit(contact, W - 2 * P), P, 178, "left", "rgba(255,255,255,0.92)") }
   let y = HH + 30;
