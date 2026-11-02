@@ -131,7 +131,8 @@ function status() {
   const n = Object.keys(S.p).length;
   return n ? ["🟡", "Pending – " + n + " badlav bhej rahe hain"] : ["🟢", "Synced ✔"];
 }
-function upd() { const e = document.getElementById("cs"); if (e) e.textContent = READY ? status()[0] : ""; const c = document.getElementById("cloudBox"); if (c) c.innerHTML = inner() }
+window.cloudLinked = () => !!(READY && C.user && C.gid);
+function upd() { const dn = document.getElementById("dataNote"); if (dn && window.dataNote) dn.innerHTML = dataNote(); const e = document.getElementById("cs"); if (e) e.textContent = READY ? status()[0] : ""; const c = document.getElementById("cloudBox"); if (c) c.innerHTML = inner() }
 const t = ms => ms ? new Date(ms).toLocaleString("en-IN", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" }) : "kabhi nahi";
 function inner() {
   const [ic, tx] = status();
