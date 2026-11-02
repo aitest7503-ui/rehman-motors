@@ -51,18 +51,25 @@ const fd=s=>s?s.split("-").reverse().join("-"):"";
 const rs=n=>"₹"+Math.round(Number(n)||0).toLocaleString("en-IN");
 const num=v=>Number(v)||0;
 function tot(j){const lab=j.works.reduce((a,w)=>a+num(w.rate),0)+num(j.labourExtra);const ps=j.parts.reduce((a,p)=>a+num(p.qty)*num(p.price),0);const pc=j.parts.reduce((a,p)=>a+num(p.qty)*num(p.cost),0);return{lab,ps,pc,total:lab+ps}}
+function paidAmt(j){const t=tot(j).total;if(Array.isArray(j.payments)&&j.payments.length)return j.payments.reduce((a,p)=>a+num(p.amt),0);return(j.pay!=="Udhaar"||j.paid)?t:0}
+function payBreak(j){const o={Cash:0,UPI:0};if(Array.isArray(j.payments)&&j.payments.length)j.payments.forEach(p=>{o[p.mode==="UPI"?"UPI":"Cash"]+=num(p.amt)});else if(j.pay!=="Udhaar"||j.paid)o[j.pay==="UPI"?"UPI":"Cash"]+=tot(j).total;return o}
+function payStatus(j){const d=dueAmt(j),p=paidAmt(j);return d<=0?"Paid ✔":p>0?"Aanshik (Partial)":"Udhaar"}
+function collected(a,b){const o={Cash:0,UPI:0};D.jobs.forEach(j=>{if(Array.isArray(j.payments)&&j.payments.length)j.payments.forEach(p=>{if(p.date>=a&&p.date<=b)o[p.mode==="UPI"?"UPI":"Cash"]+=num(p.amt)});else if(j.date>=a&&j.date<=b){const x=payBreak(j);o.Cash+=x.Cash;o.UPI+=x.UPI}});return o}
+function udhaarMsg(j){const s=D.settings;return `Namaste ${j.cust.name||""} ji,\n${s.name} mein bike ${j.bike.model||""} ${j.bike.number||""} (Bill ${j.no}, ${fd(j.date)}) ka *${rs(dueAmt(j))}* baaki hai.\nSuvidha ho to jama kar dijiye${s.upi?`, ya UPI karein: ${s.upi}`:""}.\nDhanyavaad 🙏${s.phone?"\n"+s.phone:""}`}
+function dueAmt(j){return Math.max(0,Math.round(tot(j).total-paidAmt(j)))}
 function waNum(p){let d=String(p||"").replace(/\D/g,"");if(d.length>10)d=d.slice(-10);return d.length===10?"91"+d:""}
 function waLink(p,msg){const n=waNum(p);return n?`https://wa.me/${n}?text=${encodeURIComponent(msg)}`:""}
 let view="home",editId=null,curJob=null,plMode="today",plFrom=today(),plTo=today();
-const TABS=[["home","🏠","Home"],["job","➕","Naya Job"],["rem","🔔","Reminders"],["cust","👥","Customers"],["hisaab","📊","Hisaab"],["set","⚙️","Settings"]];
+const TABS=[["home","🏠","Home"],["job","➕","Naya Job"],["jobs","📋","Job Cards"],["cust","👥","Customers"],["hisaab","📊","Hisaab"],["set","⚙️","Settings"]];
 function go(v,arg){view=v;if(v==="job"&&arg===undefined)editId=null;if(arg!==undefined){if(v==="job")editId=arg;else curJob=arg}render();scrollTo(0,0)}
 function render(){$("#gname").textContent=D.settings.name||"Rehman Motors";
-$("#nav").innerHTML=TABS.map(t=>`<button class="${view===t[0]||(t[0]==="hisaab"&&view==="kharcha")||(t[0]==="cust"&&["camp","offer","custEdit"].includes(view))?"on":""}" onclick="go('${t[0]}')"><i>${t[1]}</i>${t[2]}</button>`).join("");
-$("#app").innerHTML=({home,job:jobForm,rem,hisaab,set,card:()=>doc("card"),bill:()=>doc("bill"),kharcha,history:hist,cust:()=>custView(),custEdit:()=>custEdit(),camp:()=>campView(),offer:()=>offerView()})[view]();
+$("#nav").innerHTML=TABS.map(t=>`<button class="${view===t[0]||(t[0]==="hisaab"&&view==="kharcha")||(t[0]==="jobs"&&["card","bill"].includes(view))||(t[0]==="home"&&view==="rem")||(t[0]==="cust"&&["camp","offer","custEdit"].includes(view))?"on":""}" onclick="go('${t[0]}')"><i>${t[1]}</i>${t[2]}</button>`).join("");
+$("#app").innerHTML=({home,job:jobForm,rem,hisaab,set,card:()=>doc("card"),bill:()=>doc("bill"),kharcha,history:hist,cust:()=>custView(),custEdit:()=>custEdit(),camp:()=>campView(),offer:()=>offerView(),jobs:()=>jobsView()})[view]();
 if(view==="job")initForm();if(view==="camp"){const e=document.getElementById("cp_ph");e&&e.focus()}}
 /* HOME */
 function home(){const t=today();const tj=D.jobs.filter(j=>j.date===t);const pend=D.jobs.filter(j=>j.status!=="Delivered");const due=dueList().length;
-return `<div class="stats"><div class="stat"><b>${tj.length}</b><span>Aaj ki bikes</span></div><div class="stat"><b>${rs(tj.reduce((a,j)=>a+tot(j).total,0))}</b><span>Aaj ki kamai</span></div><div class="stat"><b>${pend.length}</b><span>Pending kaam</span></div><div class="stat"><b>${due}</b><span>Reminder bhejne hain</span></div></div>
+return `<div class="stats"><div class="stat"><b>${tj.length}</b><span>Aaj ki bikes</span></div><div class="stat"><b>${rs(tj.reduce((a,j)=>a+tot(j).total,0))}</b><span>Aaj ki kamai</span></div><div class="stat"><b>${pend.length}</b><span>Pending kaam</span></div><div class="stat" onclick="go('rem')" style="cursor:pointer"><b>${due}</b><span>🔔 Reminder bhejne hain ›</span></div></div>
+<button class="btn w" onclick="go('rem')">🔔 Service Reminders (${due})</button>
 <button class="btn" onclick="go('job')">➕ Naya Job banao</button>
 <div class="row"><button class="btn w" onclick="go('history')">🔍 Customer dhundo</button><button class="btn w" onclick="go('kharcha')">💸 Kharcha likho</button></div>
 <div class="card" style="margin-top:12px"><h2>Pending kaam</h2>${pend.length?pend.slice().reverse().map(jobRow).join(""):'<div class="muted">Koi pending kaam nahi.</div>'}</div>
@@ -83,6 +90,8 @@ return `<div class="card"><h2>${j?"Job edit karo: "+esc(j.no):"Naya Job"}</h2>
 <div class="row"><div><label>Mechanic</label><select id="f_mech">${s.mechanics.map(m=>`<option>${esc(m)}</option>`).join("")}</select></div>
 <div><label>Status</label><select id="f_status">${["Aaya","Kaam chalu","Ready","Delivered"].map(x=>`<option>${x}</option>`).join("")}</select></div></div>
 <label>Payment</label><select id="f_pay"><option>Cash</option><option>UPI</option><option>Udhaar</option></select>
+${editId?`<div class="muted">Payment jodne/badalne ke liye Job card kholo, phir "Payment le lo".</div>`:`<div class="row"><div><label>Cash mila ₹</label><input id="f_cash" type="number" inputmode="numeric" placeholder="0"></div><div><label>UPI mila ₹</label><input id="f_upi" type="number" inputmode="numeric" placeholder="0"></div></div>
+<div id="f_baaki" class="muted">Cash/UPI khaali chhodo to upar wala Payment poora maana jayega.</div>`}
 <div class="total" id="f_total"></div>
 <button class="btn" onclick="saveJob()">✅ Save karo aur Job Card dekho</button>${j?`<button class="btn w" onclick="delJob('${j.id}')">🗑️ Ye job mitao</button>`:""}</div>`}
 function addCustom(n="",r=""){const d=document.createElement("div");d.className="row cw";d.innerHTML=`<input placeholder="Kaam ka naam" value="${esc(n)}"><input type="number" inputmode="numeric" placeholder="₹" value="${esc(r)}" style="max-width:100px">`;$("#f_custom").appendChild(d);d.oninput=calc}
@@ -91,7 +100,7 @@ function readForm(){const works=[];JOBS.forEach((w,i)=>{if($("#w"+i).checked)wor
 document.querySelectorAll(".cw").forEach(r=>{const [a,b]=r.querySelectorAll("input");if(a.value.trim())works.push({name:a.value.trim(),rate:num(b.value)})});
 const parts=[];document.querySelectorAll(".pr").forEach(r=>{const x=r.querySelectorAll("input");if(x[0].value.trim())parts.push({name:x[0].value.trim(),qty:num(x[1].value)||1,price:num(x[2].value),cost:num(x[3].value)})});
 return{cust:{name:$("#f_name").value.trim(),phone:$("#f_phone").value.trim(),gaon:$("#f_gaon").value.trim()},bike:{model:$("#f_model").value.trim(),number:$("#f_number").value.trim().toUpperCase(),km:$("#f_km").value},complaint:$("#f_comp").value.trim(),works,parts,labourExtra:num($("#f_lab").value),mech:$("#f_mech").value,status:$("#f_status").value,pay:$("#f_pay").value}}
-function calc(){if(!document.getElementById('f_name'))return;const f=readForm();$("#f_total").textContent="Total: "+rs(tot(f).total)}
+function calc(){if(!document.getElementById('f_name'))return;const f=readForm();$("#f_total").textContent="Total: "+rs(tot(f).total);const fc=document.getElementById("f_cash");if(fc){const c=num(fc.value),u=num($("#f_upi").value);$("#f_baaki").innerHTML=c||u?`Mila ${rs(c+u)} · <b style="color:${tot(f).total-c-u>0?"#C62828":"#1f9d55"}">Udhaar/Baaki: ${rs(Math.max(0,tot(f).total-c-u))}</b>`:"Cash/UPI khaali chhodo to upar wala Payment poora maana jayega."}}
 function initForm(){const j=editId?D.jobs.find(x=>x.id===editId):null;
 if(j){$("#f_phone").value=j.cust.phone;$("#f_name").value=j.cust.name;$("#f_gaon").value=j.cust.gaon;$("#f_model").value=j.bike.model;$("#f_number").value=j.bike.number;$("#f_km").value=j.bike.km;$("#f_comp").value=j.complaint;
 j.works.forEach(w=>{const i=JOBS.indexOf(w.name);if(i>=0){$("#w"+i).checked=true;$("#wr"+i).value=w.rate}else addCustom(w.name,w.rate)});j.parts.forEach(addPart);$("#f_lab").value=j.labourExtra;$("#f_mech").value=j.mech;$("#f_status").value=j.status;$("#f_pay").value=j.pay}
@@ -105,13 +114,16 @@ $("#f_phone").addEventListener("blur",af);$("#f_number").addEventListener("blur"
 function setDelivered(j){if(j.status==="Delivered"&&!j.deliveredOn){j.deliveredOn=today();j.nextService=addDays(j.deliveredOn,D.settings.remDays);j.remSent=false}if(j.status!=="Delivered"){j.deliveredOn=null;j.nextService=null}}
 function saveJob(){const f=readForm();if(!f.cust.name&&!f.cust.phone){alert("Customer ka naam ya phone likho");return}
 let j;if(editId){j=D.jobs.find(x=>x.id===editId);Object.assign(j,f)}else{D.seq++;j={id:"j"+Date.now()+Math.random().toString(36).slice(2,6),no:"RM-"+String(D.seq).padStart(4,"0"),date:today(),...f,deliveredOn:null,nextService:null,remSent:false,paid:f.pay!=="Udhaar"};D.jobs.push(j)}
-if(f.pay!=="Udhaar")j.paid=true;else if(editId)j.paid=false;setDelivered(j);save();go("card",j.id)}
-function delJob(id){if(confirm("Pakka mitana hai?")){D.jobs=D.jobs.filter(j=>j.id!==id);save();go("home")}}
+if(f.pay!=="Udhaar")j.paid=true;else if(editId)j.paid=false;if(!editId){const fc=document.getElementById("f_cash"),c=fc?num(fc.value):0,u=fc?num($("#f_upi").value):0,T=tot(j).total;j.payments=[];
+if(c||u){if(c)j.payments.push({id:"p"+Date.now()+"c",amt:c,mode:"Cash",date:j.date});if(u)j.payments.push({id:"p"+Date.now()+"u",amt:u,mode:"UPI",date:j.date});j.pay=c+u<T?"Udhaar":(c>=u?"Cash":"UPI")}
+else if(f.pay!=="Udhaar"&&T>0)j.payments.push({id:"p"+Date.now(),amt:T,mode:f.pay,date:j.date});if(!j.payments.length)delete j.payments}
+if(j.payments&&j.payments.length)j.paid=dueAmt(j)<=0;setDelivered(j);save();go("card",j.id)}
+function delJob(id){if(confirm("Ye job card pakka mitana hai? (Wapas nahi aayega)")){D.jobs=D.jobs.filter(j=>j.id!==id);save();go("jobs")}}
 /* JOB CARD / BILL */
 function billMsg(j){const t=tot(j),s=D.settings;let m=`*${s.name}*\n${s.tagline}\n\nBill: ${j.no}  |  Date: ${fd(j.date)}\nNamaste ${j.cust.name} ji,\nBike: ${j.bike.model} ${j.bike.number}\n\n*Kaam:*\n`;
 j.works.forEach(w=>m+=`- ${w.name}: ${rs(w.rate)}\n`);if(num(j.labourExtra))m+=`- Extra labour: ${rs(j.labourExtra)}\n`;
 if(j.parts.length){m+=`\n*Parts:*\n`;j.parts.forEach(p=>m+=`- ${p.name} x${p.qty}: ${rs(p.qty*p.price)}\n`)}
-m+=`\n*Total: ${rs(t.total)}*\nPayment: ${j.pay}\n`;if(s.upi&&j.pay!=="Cash")m+=`UPI: ${s.upi}\n`;
+m+=`\n*Total: ${rs(t.total)}*\n${(b=>(b.Cash?`Cash: ${rs(b.Cash)}\n`:"")+(b.UPI?`UPI: ${rs(b.UPI)}\n`:""))(payBreak(j))}${dueAmt(j)>0?`*Baaki (Udhaar): ${rs(dueAmt(j))}*\nStatus: Aanshik (Partial)`:"Status: Paid ✔"}\n`;if(s.upi&&j.pay!=="Cash")m+=`UPI: ${s.upi}\n`;
 if(j.nextService)m+=`Agli service: ${fd(j.nextService)}\n`;m+=`\nDhanyavaad! Aapki bike, hamari zimmedari.\n${s.name}${s.phone?" | "+s.phone:""}`;return m}
 function upiLink(j){const s=D.settings;return s.upi?`upi://pay?pa=${encodeURIComponent(s.upi)}&pn=${encodeURIComponent(s.name)}&am=${tot(j).total}&cu=INR&tn=${encodeURIComponent(j.no)}`:""}
 function doc(kind){const j=D.jobs.find(x=>x.id===curJob);if(!j)return home();const t=tot(j),s=D.settings;
@@ -123,19 +135,19 @@ return `<div class="noprint row" style="margin-bottom:10px"><button class="btn s
 <p>${esc(j.cust.name)} · ${esc(j.cust.phone)}${j.cust.gaon?" · "+esc(j.cust.gaon):""}<br>Bike: <b>${esc(j.bike.model)} ${esc(j.bike.number)}</b>${j.bike.km?" · "+esc(j.bike.km)+" km":""}</p>
 ${kind==="card"?`<p><b>Shikayat:</b> ${esc(j.complaint)||"-"}<br><b>Mechanic:</b> ${esc(j.mech)} · <b>Status:</b> ${esc(j.status)}</p>`:""}
 <table><tr><th>Kaam / Part</th><th class="n">₹</th></tr>${rows}</table>
-<div class="total">Total: ${rs(t.total)}</div><div class="muted" style="text-align:right">Payment: ${esc(j.pay)}${j.pay==="Udhaar"?(j.paid?" (mil gaya)":" (baaki)"):""}</div>
+<div class="total">Total: ${rs(t.total)}</div><div class="muted" style="text-align:right">${(b=>[b.Cash?"Cash "+rs(b.Cash):"",b.UPI?"UPI "+rs(b.UPI):""].filter(Boolean).join(" + ")||"Mila ₹0")(payBreak(j))} · ${payStatus(j)}</div>${dueAmt(j)>0?`<div style="text-align:right;color:#C62828;font-weight:700">Baaki: ${rs(dueAmt(j))}</div>`:""}
 ${j.nextService?`<p>Agli service: <b>${fd(j.nextService)}</b></p>`:""}
 ${kind==="bill"&&s.upi?`<p class="muted">UPI se pay karein: <b>${esc(s.upi)}</b></p>`:""}
 <p class="muted">Parts ka rate alag, purana part customer ko dikhaya jayega. Dhanyavaad!</p></div>
 <div class="noprint"><h3>Status badlo</h3><div>${["Aaya","Kaam chalu","Ready","Delivered"].map(x=>`<button class="btn s ${j.status===x?"":"w"}" onclick="setStatus('${j.id}','${x}')">${x}</button>`).join("")}</div>
-${j.pay==="Udhaar"&&!j.paid?`<button class="btn g" onclick="markPaid('${j.id}')">💰 Udhaar ka paisa mil gaya</button>`:""}
+${window.jobExtras?jobExtras(j):""}
 ${wl?`<a class="btn g" id="waBill" href="${wl}" target="_blank" rel="noopener">📲 WhatsApp pe bill (text) bhejo</a><div class="muted">WhatsApp khulega, message bhara hoga. Wahan bas Send dabana hai.</div>`:`<div class="warn">WhatsApp ke liye customer ka sahi 10 digit phone number chahiye.</div>`}
 <button class="btn g" onclick="billImgShare('${j.id}')">🖼️ WhatsApp pe bill photo bhejo</button><button class="btn w" onclick="billImgDl('${j.id}')">⬇️ Bill image download</button>
 ${ul?`<a class="btn w" href="${ul}">💳 UPI se paisa lo (phone ka UPI app khulega)</a>`:""}
 <button class="btn w" onclick="doPrint()">🖨️ Print / PDF save karo</button><div class="muted">PDF ke liye print screen mein "Save as PDF" chuno. Photo chahiye to screenshot le lo.</div>
 <button class="btn w" onclick="go('job','${j.id}')">✏️ Edit karo</button></div>`}
 function setStatus(id,s){const j=D.jobs.find(x=>x.id===id);j.status=s;setDelivered(j);save();render()}
-function markPaid(id){const j=D.jobs.find(x=>x.id===id);j.paid=true;save();render()}
+function markPaid(id){const j=D.jobs.find(x=>x.id===id),d=dueAmt(j);if(d>0){j.payments=j.payments||[];j.payments.push({id:"p"+Date.now(),amt:d,mode:"Cash",date:today()})}j.paid=true;save();render()}
 /* REMINDERS */
 function dueList(){const lim=addDays(today(),7);const latest={};D.jobs.forEach(j=>{const k=j.bike.number||j.cust.phone;if(!latest[k]||j.date>=latest[k].date)latest[k]=j});
 return Object.values(latest).filter(j=>j.nextService&&j.nextService<=lim&&!j.remSent).sort((a,b)=>a.nextService<b.nextService?-1:1)}
@@ -158,7 +170,7 @@ function delExp(id){D.exp=D.exp.filter(e=>e.id!==id);save();render()}
 /* HISAAB / P&L */
 function range(){const t=today();if(plMode==="today")return[t,t];if(plMode==="month")return[t.slice(0,8)+"01",t];return[plFrom,plTo]}
 function pl(a,b){const js=D.jobs.filter(j=>j.date>=a&&j.date<=b),es=D.exp.filter(e=>e.date>=a&&e.date<=b);let lab=0,ps=0,pc=0;js.forEach(j=>{const t=tot(j);lab+=t.lab;ps+=t.ps;pc+=t.pc});const kh=es.reduce((s,e)=>s+num(e.amt),0);return{js,lab,ps,pc,kh,kamai:lab+ps,munafa:lab+ps-pc-kh}}
-function hisaab(){const[a,b]=range(),r=pl(a,b);const ud=D.jobs.filter(j=>j.pay==="Udhaar"&&!j.paid);
+function hisaab(){const[a,b]=range(),r=pl(a,b);const ud=D.jobs.filter(j=>dueAmt(j)>0);
 const days={};let d=a,c=0;while(d<=b&&c<62){days[d]=0;d=addDays(d,1);c++}r.js.forEach(j=>{if(j.date in days)days[j.date]+=tot(j).total});const mx=Math.max(1,...Object.values(days));
 return `<div class="row noprint">${[["today","Aaj"],["month","Is mahine"],["custom","Date chuno"]].map(m=>`<button class="btn s ${plMode===m[0]?"":"w"}" onclick="plMode='${m[0]}';render()">${m[1]}</button>`).join("")}</div>
 ${plMode==="custom"?`<div class="row"><div><label>Se</label><input type="date" value="${plFrom}" onchange="plFrom=this.value;render()"></div><div><label>Tak</label><input type="date" value="${plTo}" onchange="plTo=this.value;render()"></div></div>`:""}
@@ -166,9 +178,11 @@ ${plMode==="custom"?`<div class="row"><div><label>Se</label><input type="date" v
 <tr><td>Bikes</td><td class="n">${r.js.length}</td></tr><tr><td>Labour kamai</td><td class="n">${rs(r.lab)}</td></tr><tr><td>Parts bikri</td><td class="n">${rs(r.ps)}</td></tr>
 <tr><td><b>Kul kamai</b></td><td class="n"><b>${rs(r.kamai)}</b></td></tr><tr><td>Parts ki kharid (jo likhi)</td><td class="n">− ${rs(r.pc)}</td></tr><tr><td>Kharcha</td><td class="n">− ${rs(r.kh)}</td></tr>
 <tr><td><b>Munafa</b></td><td class="n"><b style="color:${r.munafa<0?"#C62828":"#1f9d55"}">${rs(r.munafa)}</b></td></tr></table>
-<div class="muted">Kul kamai mein Udhaar wale bill bhi gine gaye hain.</div></div>
+<h3>Paisa kaise mila (is samay mein)</h3><table>${(c=>`<tr><td>💵 Cash mila</td><td class="n">${rs(c.Cash)}</td></tr><tr><td>📱 UPI mila</td><td class="n">${rs(c.UPI)}</td></tr><tr><td><b>Kul mila</b></td><td class="n"><b>${rs(c.Cash+c.UPI)}</b></td></tr>`)(collected(a,b))}
+<tr><td><b style="color:#C62828">Kul udhaar baaki (aaj tak)</b></td><td class="n"><b style="color:#C62828">${rs(D.jobs.reduce((s,j)=>s+dueAmt(j),0))}</b></td></tr></table>
+<div class="muted">Kul kamai mein Udhaar wale bill bhi gine gaye hain. "Mila" mein payment ki date se gina gaya hai.</div></div>
 ${Object.keys(days).length>1?`<div class="card"><h2>Roz ki kamai</h2><div class="bars">${Object.entries(days).map(([k,v])=>`<div title="${fd(k)}: ${rs(v)}" style="height:${Math.max(2,v/mx*100)}%"></div>`).join("")}</div><div class="muted row"><span>${fd(a)}</span><span style="text-align:right">${fd(b)}</span></div></div>`:""}
-<div class="card"><h2>Udhaar baaki (${ud.length})</h2>${ud.length?ud.map(j=>`<div class="item" onclick="go('card','${j.id}')"><b>${esc(j.cust.name)}</b> · ${rs(tot(j).total)}<div class="muted">${esc(j.no)} · ${fd(j.date)} · ${esc(j.cust.phone)}</div></div>`).join("")+`<p><b>Kul udhaar: ${rs(ud.reduce((s,j)=>s+tot(j).total,0))}</b></p>`:'<p class="muted">Koi udhaar baaki nahi.</p>'}</div>
+<div class="card"><h2>Udhaar baaki (${ud.length})</h2>${ud.length?ud.map(j=>`<div class="item" onclick="go('card','${j.id}')"><b>${esc(j.cust.name)}</b> · Baaki ${rs(dueAmt(j))}<div class="muted">${esc(j.no)} · ${fd(j.date)} · ${esc(j.cust.phone)}</div>${waLink(j.cust.phone,"x")?`<a class="btn s g" href="${waLink(j.cust.phone,udhaarMsg(j))}" target="_blank" rel="noopener" onclick="event.stopPropagation()">📲 Udhaar yaad dilao</a>`:""}</div>`).join("")+`<p><b>Kul udhaar: ${rs(ud.reduce((s,j)=>s+dueAmt(j),0))}</b></p>`:'<p class="muted">Koi udhaar baaki nahi.</p>'}</div>
 <button class="btn w" onclick="go('kharcha')">💸 Kharcha likho</button>`}
 /* SETTINGS */
 function set(){const s=D.settings;
@@ -190,8 +204,8 @@ function doPrint(){if(window.Android&&Android.print)Android.print();else print()
 function appBack(){if(view!=="home"){go("home");return true}return false}
 function dl(name,text,type){if(window.Android&&Android.saveFile){Android.saveFile(name,type,text);return}const a=document.createElement("a");a.href=URL.createObjectURL(new Blob([text],{type}));a.download=name;document.body.appendChild(a);a.click();a.remove()}
 function backup(){dl(`rehman-motors-backup-${today()}.json`,JSON.stringify(D,null,1),"application/json");D.lastBackup=today();save()}
-function csv(){const q=v=>`"${String(v??"").replace(/"/g,'""')}"`;const h=["Job No","Date","Naam","Phone","Gaon","Bike","Number","KM","Kaam","Parts","Labour","Parts Sale","Parts Cost","Total","Payment","Udhaar Baaki","Status","Mechanic","Delivered","Agli Service"];
-const r=D.jobs.map(j=>{const t=tot(j);return[j.no,j.date,j.cust.name,j.cust.phone,j.cust.gaon,j.bike.model,j.bike.number,j.bike.km,j.works.map(w=>w.name).join("; "),j.parts.map(p=>p.name+" x"+p.qty).join("; "),t.lab,t.ps,t.pc,t.total,j.pay,j.pay==="Udhaar"&&!j.paid?"Haan":"",j.status,j.mech,j.deliveredOn||"",j.nextService||""]});
+function csv(){const q=v=>`"${String(v??"").replace(/"/g,'""')}"`;const h=["Job No","Date","Naam","Phone","Gaon","Bike","Number","KM","Kaam","Parts","Labour","Parts Sale","Parts Cost","Total","Payment","Baaki ₹","Status","Mechanic","Delivered","Agli Service"];
+const r=D.jobs.map(j=>{const t=tot(j);return[j.no,j.date,j.cust.name,j.cust.phone,j.cust.gaon,j.bike.model,j.bike.number,j.bike.km,j.works.map(w=>w.name).join("; "),j.parts.map(p=>p.name+" x"+p.qty).join("; "),t.lab,t.ps,t.pc,t.total,j.pay,dueAmt(j)||"",j.status,j.mech,j.deliveredOn||"",j.nextService||""]});
 dl(`rehman-motors-jobs-${today()}.csv`,"\ufeff"+[h,...r].map(x=>x.map(q).join(",")).join("\n"),"text/csv")}
 function restore(f){if(!f)return;const r=new FileReader();r.onload=()=>{try{const x=JSON.parse(r.result);if(!x.settings||!Array.isArray(x.jobs))throw 0;if(!confirm(`Backup mein ${x.jobs.length} jobs hain. Abhi ka data badal jayega. Theek?`))return;x.exp=x.exp||[];x.cust=x.cust||[];D=x;save();alert("Restore ho gaya ✔");go("home")}catch(e){alert("Ye sahi backup file nahi hai")}};r.readAsText(f)}
 /* DEMO */
@@ -205,6 +219,7 @@ render();
 </script>
 <script src="vendor/qrcode.js"></script>
 <script src="cust.js"></script>
+<script src="jobs.js"></script>
 <script src="firebase-config.js"></script>
 <script type="module" src="cloud.js"></script>
 </body></html>

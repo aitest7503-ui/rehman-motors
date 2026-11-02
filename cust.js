@@ -136,7 +136,7 @@ function billCanvas(j) {
   const rows = j.works.map(w => [w.name, "", num(w.rate)]); if (num(j.labourExtra)) rows.push(["Extra labour", "", num(j.labourExtra)]);
   j.parts.forEach(p => rows.push([p.name, "x" + p.qty, num(p.qty) * num(p.price)]));
   const qrOk = s.upi && typeof qrcode === "function";
-  const H = 470 + rows.length * 46 + (qrOk ? 350 : s.upi ? 60 : 0) + (j.nextService ? 40 : 0);
+  const H = 2400;
   const c = document.createElement("canvas"); c.width = W; c.height = H; const x = c.getContext("2d");
   const F = (sz, b) => x.font = `${b ? "bold " : ""}${sz}px Roboto, "Noto Sans", Arial, sans-serif`;
   const txt = (s_, X, Y, al) => { x.textAlign = al || "left"; x.fillText(s_, X, Y) };
@@ -153,20 +153,26 @@ function billCanvas(j) {
   rows.forEach((r, i) => { if (i % 2) { x.fillStyle = "#fafafa"; x.fillRect(P, y, W - 2 * P, 46); x.fillStyle = "#222" } txt(fit(r[0], W - 380), P + 12, y + 30); txt(r[1], W - 250, y + 30, "center"); txt(rs(r[2]), W - P - 12, y + 30, "right"); y += 46 });
   x.strokeStyle = "#C62828"; x.lineWidth = 2; x.beginPath(); x.moveTo(P, y + 6); x.lineTo(W - P, y + 6); x.stroke();
   y += 50; F(32, 1); x.fillStyle = "#C62828"; txt("Total: " + rs(t.total), W - P, y, "right");
-  y += 38; F(22, 1); const due = j.pay === "Udhaar" && !j.paid;
-  x.fillStyle = due ? "#C62828" : "#1f9d55"; txt(due ? `Baaki (Udhaar): ${rs(t.total)}` : `Paid ✔ (${j.pay})`, W - P, y, "right");
+  y += 38; F(22, 1); const dA = dueAmt(j), due = dA > 0;
+  const pb = payBreak(j); x.fillStyle = "#222"; F(22);
+  const parts = [pb.Cash ? "Cash " + rs(pb.Cash) : "", pb.UPI ? "UPI " + rs(pb.UPI) : ""].filter(Boolean).join("  +  ");
+  if (parts) txt(parts, P, y);
+  F(22, 1); x.fillStyle = due ? "#C62828" : "#1f9d55"; txt(due ? `Baaki: ${rs(dA)}` : "Paid ✔", W - P, y, "right");
+  if (due) { y += 32; F(19); txt(paidAmt(j) > 0 ? "Status: Aanshik (Partial)" : "Status: Udhaar", W - P, y, "right") }
   if (j.nextService) { y += 40; x.fillStyle = "#222"; F(21); txt("Agli service: " + fd(j.nextService), P, y) }
   if (qrOk) {
-    try { const q = qrcode(0, "M"); q.addData(`upi://pay?pa=${s.upi}&pn=${encodeURIComponent(s.name)}&am=${due || j.pay !== "Cash" ? t.total : ""}&cu=INR&tn=${j.no}`.replace("&am=&", "&")); q.make();
+    try { const q = qrcode(0, "M"); q.addData(`upi://pay?pa=${s.upi}&pn=${encodeURIComponent(s.name)}&am=${due ? dA : ""}&cu=INR&tn=${j.no}`.replace("&am=&", "&")); q.make();
       const n = q.getModuleCount(), sz = 220, cs = sz / n, qx = (W - sz) / 2, qy = y + 30; x.fillStyle = "#000";
       for (let r = 0; r < n; r++) for (let cc = 0; cc < n; cc++) if (q.isDark(r, cc)) x.fillRect(Math.floor(qx + cc * cs), Math.floor(qy + r * cs), Math.ceil(cs), Math.ceil(cs));
       F(19); x.fillStyle = "#444"; txt("Scan karke UPI se pay karein · " + s.upi, W / 2, qy + sz + 30, "center"); y = qy + sz + 40 } catch (e) { y += 10 }
   } else if (s.upi) { y += 40; F(21); x.fillStyle = "#222"; txt("UPI: " + s.upi, P, y) }
-  x.fillStyle = "#C62828"; x.fillRect(0, H - 70, W, 70); x.fillStyle = "#fff"; F(24, 1); txt("Dhanyavaad! 🙏  Aapki bike, hamari zimmedari.", W / 2, H - 27, "center");
-  return c;
+  const FH = Math.ceil(y + 40 + 70), o = document.createElement("canvas"); o.width = W; o.height = FH; const ox = o.getContext("2d");
+  ox.drawImage(c, 0, 0, W, FH, 0, 0, W, FH); ox.fillStyle = "#C62828"; ox.fillRect(0, FH - 70, W, 70); ox.fillStyle = "#fff";
+  ox.font = `bold 24px Roboto, "Noto Sans", Arial, sans-serif`; ox.textAlign = "center"; ox.fillText("Dhanyavaad! 🙏  Aapki bike, hamari zimmedari.", W / 2, FH - 27);
+  return o;
 }
 const billName = j => `Bill-${j.no}.png`;
-function billCaption(j) { const s = D.settings; return `${s.name} – Bill ${j.no}\nNamaste ${j.cust.name || ""} ji, aapka bill. Total: ${rs(tot(j).total)}\nDhanyavaad! ${s.phone ? "📞 " + s.phone : ""}` }
+function billCaption(j) { const s = D.settings; return `${s.name} – Bill ${j.no}\nNamaste ${j.cust.name || ""} ji, aapka bill. Total: ${rs(tot(j).total)}${dueAmt(j) > 0 ? " · Baaki: " + rs(dueAmt(j)) : " · Paid ✔"}\nDhanyavaad! ${s.phone ? "📞 " + s.phone : ""}` }
 async function billImgShare(id) {
   const j = D.jobs.find(x => x.id === id), cv = billCanvas(j), cap = billCaption(j);
   if (window.Android && Android.shareImage) { Android.shareImage(cv.toDataURL("image/png").split(",")[1], waNum(j.cust.phone), cap); return }
